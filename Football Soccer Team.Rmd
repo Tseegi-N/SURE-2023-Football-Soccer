@@ -3,3 +3,13 @@ title: "SURE 2023 - Football/Soccer"
 output: html_document
 date: "2023-06-21"
 ---
+```{r}
+library(devtools)
+library(StatsBombR)
+```
+
+```{r}
+Comp <- FreeCompetitions()
+Matches <- FreeMatches(Comp)
+```
+
