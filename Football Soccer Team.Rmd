@@ -40,3 +40,31 @@ bettingPL2018 %>%
 merge.data.frame(bettingPL2018, basicInfoPL2018, by = )
 ```
 
+
+```{r}
+bettingPL2018$HomeTeam <- stri_replace_all_regex(bettingPL2018$HomeTeam,
+                                                 pattern = c("Man United", "Bournemouth", "Huddersfield", 
+                                                             "Newcastle", "Wolves", 
+                                                             "Cardiff", "Leicester", "Tottenham",
+                                                             "West Ham", "Brighton", 
+                                                             "Man City"),
+                                                 replacement = c("Manchester United", "AFC Bournemouth", "Huddersfield Town",
+                                                                 "Newcastle United", "Wolverhampton Wanderers", 
+                                                                 "Cardiff City", "Leicester City", "Tottenham Hotspur",
+                                                                 "West Ham United", "Brighton & Hove Albion", 
+                                                                 "Manchester City"),
+                                                 vectorize = FALSE)
+
+bettingPL2018$AwayTeam <- stri_replace_all_regex(bettingPL2018$AwayTeam,
+                                                 pattern = c("Man United", "Bournemouth", "Huddersfield", 
+                                                             "Newcastle", "Wolves", 
+                                                             "Cardiff", "Leicester", "Tottenham",
+                                                             "West Ham", "Brighton", 
+                                                             "Man City"),
+                                                 replacement = c("Manchester United", "AFC Bournemouth", "Huddersfield Town",
+                                                                 "Newcastle United", "Wolverhampton Wanderers", 
+                                                                 "Cardiff City", "Leicester City", "Tottenham Hotspur",
+                                                                 "West Ham United", "Brighton & Hove Albion", 
+                                                                 "Manchester City"),
+                                                 vectorize = FALSE)
+```
