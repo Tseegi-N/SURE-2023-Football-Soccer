@@ -27,6 +27,14 @@ basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.c
 ```
 
 ```{r}
+team_data <- read.csv("teams.csv")
+team_data_2 <- read.csv("teams2.csv")
+players_data <- read.csv("players.csv")
+```
+
+
+
+```{r}
 bettingPL2018 %>% 
   mutate(Info = )
 merge.data.frame(bettingPL2018, basicInfoPL2018, by = )
