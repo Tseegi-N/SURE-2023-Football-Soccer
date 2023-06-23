@@ -21,4 +21,14 @@ fotmob_matches <- c(3609994, 3610132)
 match_info <- fotmob_get_match_info(fotmob_matches)
 match_details_first <- fotmob_get_match_details(c(3609981))
 ```
+```{r}
+bettingPL2018 <- read.csv("E0 (1).csv")
+basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.csv")
+```
+
+```{r}
+bettingPL2018 %>% 
+  mutate(Info = )
+merge.data.frame(bettingPL2018, basicInfoPL2018, by = )
+```
 
