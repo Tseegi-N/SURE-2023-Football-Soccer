@@ -33,14 +33,6 @@ players_data <- read.csv("players.csv")
 ```
 
 
-
-```{r}
-bettingPL2018 %>% 
-  mutate(Info = )
-merge.data.frame(bettingPL2018, basicInfoPL2018, by = )
-```
-
-
 ```{r}
 bettingPL2018$HomeTeam <- stri_replace_all_regex(bettingPL2018$HomeTeam,
                                                  pattern = c("Man United", "Bournemouth", "Huddersfield", 
@@ -68,3 +60,25 @@ bettingPL2018$AwayTeam <- stri_replace_all_regex(bettingPL2018$AwayTeam,
                                                                  "Manchester City"),
                                                  vectorize = FALSE)
 ```
+
+```{r}
+bettingPL2018 <- bettingPL2018 %>% 
+  mutate(Info = paste(HomeTeam, " ", AwayTeam, "-", Date))
+
+basicInfoPL2018 <- basicInfoPL2018 %>% mutate(datetime = as_datetime(timestamp),
+                           date = as_date(datetime),
+                           day = day(date),
+                           month = month(date),
+                           year = year(date),
+                           dmy = str_c(day, month, year, sep = "/"),
+                           date = format(date, "%D/%M/%Y"))
+
+basicInfoPL2018 <- basicInfoPL2018 %>%
+  mutate(Date = make_date(date_GMT),
+         Info = paste(home_team_name, " ", away_team_name, "-", date))
+
+bettingBasicPL2018 <- left_join(bettingPL2018, basicInfoPL2018, 
+                                       by = "Info")
+
+```
+
