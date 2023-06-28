@@ -9,6 +9,7 @@ library(StatsBombR)
 library(worldfootballR)
 library(dplyr)
 library(tidyr)
+library(lubridate)
 ```
 
 ```{r}
@@ -34,34 +35,49 @@ players_data <- read.csv("players.csv")
 
 
 ```{r}
-bettingPL2018$HomeTeam <- stri_replace_all_regex(bettingPL2018$HomeTeam,
-                                                 pattern = c("Man United", "Bournemouth", "Huddersfield", 
-                                                             "Newcastle", "Wolves", 
-                                                             "Cardiff", "Leicester", "Tottenham",
-                                                             "West Ham", "Brighton", 
-                                                             "Man City"),
-                                                 replacement = c("Manchester United", "AFC Bournemouth", "Huddersfield Town",
-                                                                 "Newcastle United", "Wolverhampton Wanderers", 
-                                                                 "Cardiff City", "Leicester City", "Tottenham Hotspur",
-                                                                 "West Ham United", "Brighton & Hove Albion", 
-                                                                 "Manchester City"),
-                                                 vectorize = FALSE)
+bettingPL2018$HomeTeam <- 
+  stri_replace_all_regex(bettingPL2018$HomeTeam,
+                         pattern = c("Man United", "Bournemouth",
+                                     "Huddersfield", "Newcastle",
+                                     "Wolves", "Cardiff", "Leicester",
+                                     "Tottenham", "West Ham", "Brighton",
+                                     "Man City"),
+                         replacement = c("Manchester United", 
+                                         "AFC Bournemouth", 
+                                         "Huddersfield Town",
+                                         "Newcastle United",
+                                         "Wolverhampton Wanderers",
+                                         "Cardiff City", 
+                                         "Leicester City", 
+                                         "Tottenham Hotspur",
+                                         "West Ham United", 
+                                         "Brighton & Hove Albion",
+                                         "Manchester City"),
+                         vectorize = FALSE)
 
-bettingPL2018$AwayTeam <- stri_replace_all_regex(bettingPL2018$AwayTeam,
-                                                 pattern = c("Man United", "Bournemouth", "Huddersfield", 
-                                                             "Newcastle", "Wolves", 
-                                                             "Cardiff", "Leicester", "Tottenham",
-                                                             "West Ham", "Brighton", 
-                                                             "Man City"),
-                                                 replacement = c("Manchester United", "AFC Bournemouth", "Huddersfield Town",
-                                                                 "Newcastle United", "Wolverhampton Wanderers", 
-                                                                 "Cardiff City", "Leicester City", "Tottenham Hotspur",
-                                                                 "West Ham United", "Brighton & Hove Albion", 
-                                                                 "Manchester City"),
-                                                 vectorize = FALSE)
+bettingPL2018$AwayTeam <- 
+  stri_replace_all_regex(bettingPL2018$AwayTeam,
+                         pattern = c("Man United", "Bournemouth",
+                                     "Huddersfield", "Newcastle",
+                                     "Wolves", "Cardiff", "Leicester",
+                                     "Tottenham", "West Ham", "Brighton",
+                                     "Man City"),
+                         replacement = c("Manchester United", 
+                                         "AFC Bournemouth", 
+                                         "Huddersfield Town",
+                                         "Newcastle United",
+                                         "Wolverhampton Wanderers",
+                                         "Cardiff City", 
+                                         "Leicester City", 
+                                         "Tottenham Hotspur",
+                                         "West Ham United", 
+                                         "Brighton & Hove Albion",
+                                         "Manchester City"),
+                         vectorize = FALSE)
 ```
 
-```{r}
+
+```{r, warning= FALSE}
 bettingPL2018 <- bettingPL2018 %>% 
   mutate(Info = paste(HomeTeam, " ", AwayTeam, "-", Date))
 
@@ -79,6 +95,33 @@ basicInfoPL2018 <- basicInfoPL2018 %>%
 
 bettingBasicPL2018 <- left_join(bettingPL2018, basicInfoPL2018, 
                                        by = "Info")
+
+```
+
+```{r}
+epl_player_xg_2021 <- fotmob_get_season_stats(country = "ENG",
+                                              league_name = "Premier League",
+                                              season = "2020/2021",
+                                              team_or_player = "player",
+                                              stat_name = c("Expected goals (xG)", 
+                                              "Accurate long balls per 90", "Accurate passes per 90",
+                                              "Assists", "Big chances created", "Big chances missed",
+                                              "Blocks per 90", "Chances created", "Clean sheets",
+                                              "Clearances per 90", "Expected assist (xA)", 
+                                              "Expected assist (xA) per 90", "Expected goals (xG)",
+                                              "Expected goals (xG) per 90", 
+                                              "Expected goals on target (xGOT)", "FotMob rating", 
+                                              "Fouls committed per 90", "Goals + Assists", 
+                                              "Goals conceded per 90", "Goals per 90", 
+                                              "Goals prevented", "Interceptions per 90", 
+                                              "Penalties conceded", "Penalties won", 
+                                              "Possession won final 3rd per 90", "Red cards", 
+                                              "Save percentage", "Saves per 90", 
+                                              "Shots on target per 90", "Shots per 90", 
+                                              "Successful dribbles per 90", 
+                                              "Successful tackles per 90", "Top scorer", 
+                                              "xG + xA per 90", "Yellow cards"))
+
 
 ```
 
