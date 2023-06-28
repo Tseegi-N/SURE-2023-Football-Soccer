@@ -126,3 +126,9 @@ epl_player_xg_2021 <- fotmob_get_season_stats(country = "ENG",
 
 ```
 
+```{r}
+# FIFA Data
+
+FIFA_players <- read.csv("players_18.csv")
+```
+
