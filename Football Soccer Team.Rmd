@@ -130,5 +130,9 @@ epl_player_xg_2021 <- fotmob_get_season_stats(country = "ENG",
 #Rename
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   rename(Home_goals = FTHG, Away_goals = FTAG, Halftime_home_goals = HTHG, Halftime_away_goals = HTAG, Home_shots = HS, Away_shots = AS, Home_shots_on_target = HST, Away_shots_on_target = AST ,Home_fouls = HF, Home_cards =  HC,Away_cards = AC, Home_yellows = HY, Away_yellows = AY , Home_reds = HR, Away_reds = AR)
+
+# FIFA Data
+
+FIFA_players <- read.csv("players_18.csv")
 ```
 
