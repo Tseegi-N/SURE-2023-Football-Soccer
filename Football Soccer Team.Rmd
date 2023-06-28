@@ -13,15 +13,16 @@ library(lubridate)
 ```
 
 ```{r}
-Comp <- FreeCompetitions()
-Matches <- FreeMatches(Comp)
-fotmob_matches <- fotmob_get_matches_by_date(date = c("20210925"))
-#Chelsea_ManCity <- fotmob_matches %>% 
- # filter(id == "3609981")
-fotmob_matches <- c(3609994, 3610132)
-match_info <- fotmob_get_match_info(fotmob_matches)
-match_details_first <- fotmob_get_match_details(c(3609981))
+# Comp <- FreeCompetitions()
+# Matches <- FreeMatches(Comp)
+# fotmob_matches <- fotmob_get_matches_by_date(date = c("20210925"))
+# #Chelsea_ManCity <- fotmob_matches %>% 
+#  # filter(id == "3609981")
+# fotmob_matches <- c(3609994, 3610132)
+# match_info <- fotmob_get_match_info(fotmob_matches)
+# match_details_first <- fotmob_get_match_details(c(3609981))
 ```
+
 ```{r}
 bettingPL2018 <- read.csv("E0 (1).csv")
 basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.csv")
