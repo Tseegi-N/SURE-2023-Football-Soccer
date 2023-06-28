@@ -87,7 +87,8 @@ basicInfoPL2018 <- basicInfoPL2018 %>% mutate(datetime = as_datetime(timestamp),
                            month = month(date),
                            year = year(date),
                            dmy = str_c(day, month, year, sep = "/"),
-                           date = format(date, "%D/%M/%Y"))
+                           date = format(date, "%d/%m/%Y"))
+
 
 basicInfoPL2018 <- basicInfoPL2018 %>%
   mutate(Date = make_date(date_GMT),
