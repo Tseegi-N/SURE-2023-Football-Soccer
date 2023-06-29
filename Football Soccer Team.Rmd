@@ -10,6 +10,7 @@ library(worldfootballR)
 library(dplyr)
 library(tidyr)
 library(lubridate)
+library(ggplot2)
 ```
 
 ```{r}
@@ -121,5 +122,17 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
     expect_win = ifelse(((odds_ft_home_team_win < odds_ft_draw) & (odds_ft_home_team_win < odds_ft_away_team_win)), "expected home wins", 
                         ifelse((odds_ft_draw < odds_ft_home_team_win) & (odds_ft_draw < odds_ft_away_team_win), "expected draw", "expected away win")))
 ```
+
+```{r}
+mosaicplot(table(bettingBasicPL2018$Full_time_result, bettingBasicPL2018$expect_win),
+shade = TRUE, main = "Relationship between expected win and actual win?")
+```
+
+```{r}
+bettingBasicPL2018 %>%
+  ggplot(aes(x = Full_time_result, fill = expect_win)) +
+  geom_bar() + theme_bw()
+```
+
 
 
