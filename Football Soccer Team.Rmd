@@ -4,6 +4,7 @@ output: html_document
 date: "2023-06-21"
 ---
 ```{r, warning=FALSE}
+# install necessary packages
 library(devtools)
 library(StatsBombR)
 library(worldfootballR)
@@ -14,21 +15,19 @@ library(ggplot2)
 ```
 
 ```{r}
+#fotmob data
 Comp <- FreeCompetitions()
 Matches <- FreeMatches(Comp)
 fotmob_matches <- fotmob_get_matches_by_date(date = c("20210925"))
-#Chelsea_ManCity <- fotmob_matches %>% 
- # filter(id == "3609981")
 fotmob_matches <- c(3609994, 3610132)
 match_info <- fotmob_get_match_info(fotmob_matches)
 match_details_first <- fotmob_get_match_details(c(3609981))
 ```
-```{r}
-bettingPL2018 <- read.csv("E0 (1).csv")
-basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.csv")
-```
 
 ```{r}
+#betting and footystat data
+bettingPL2018 <- read.csv("E0 (1).csv")
+basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.csv")
 team_data <- read.csv("teams.csv")
 team_data_2 <- read.csv("teams2.csv")
 players_data <- read.csv("players.csv")
@@ -36,6 +35,7 @@ players_data <- read.csv("players.csv")
 
 
 ```{r}
+#match team names
 bettingPL2018$HomeTeam <- 
   stri_replace_all_regex(bettingPL2018$HomeTeam,
                          pattern = c("Man United", "Bournemouth",
@@ -79,6 +79,7 @@ bettingPL2018$AwayTeam <-
 
 
 ```{r, warning= FALSE}
+#create new variable to match with and merge
 bettingPL2018 <- bettingPL2018 %>% 
   mutate(Info = paste(HomeTeam, " ", AwayTeam, "-", Date))
 
@@ -104,31 +105,33 @@ bettingBasicPL2018 <- left_join(bettingPL2018, basicInfoPL2018,
 ```{r}
 #Rename
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  rename(Home_goals = FTHG, Away_goals = FTAG, Halftime_home_goals = HTHG, Halftime_away_goals = HTAG, Home_shots = HS, Away_shots = AS, Home_shots_on_target = HST, Away_shots_on_target = AST ,Home_fouls = HF, Home_cards =  HC,Away_cards = AC, Home_yellows = HY, Away_yellows = AY , Home_reds = HR, Away_reds = AR)
+  rename(Home_goals = FTHG, Away_goals = FTAG, Halftime_home_goals = HTHG, 
+         Halftime_away_goals = HTAG, Home_shots = HS, Away_shots = AS, 
+         Home_shots_on_target = HST, Away_shots_on_target = AST ,Home_fouls = HF, 
+         Home_cards =  HC,Away_cards = AC, Home_yellows = HY, Away_yellows = AY , 
+         Home_reds = HR, Away_reds = AR, Full_time_result = FTR, Half_time_result = HTR)
 
 # FIFA Data
 
 FIFA_players <- read.csv("players_18.csv")
 ```
 
-```{r}
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  rename(Full_time_result = FTR, Half_time_result = HTR)
-```
 
 ```{r}
+# create new expected win variable
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  mutate(
-    expect_win = ifelse(((odds_ft_home_team_win < odds_ft_draw) & (odds_ft_home_team_win < odds_ft_away_team_win)), "expected home wins", 
+  mutate(expect_win = ifelse(((odds_ft_home_team_win < odds_ft_draw) & (odds_ft_home_team_win < odds_ft_away_team_win)), "expected home wins", 
                         ifelse((odds_ft_draw < odds_ft_home_team_win) & (odds_ft_draw < odds_ft_away_team_win), "expected draw", "expected away win")))
 ```
 
 ```{r}
+#mosiac plot to compare expected and actual win rate
 mosaicplot(table(bettingBasicPL2018$Full_time_result, bettingBasicPL2018$expect_win),
 shade = TRUE, main = "Relationship between expected win and actual win?")
 ```
 
 ```{r}
+# bar graph for referral
 bettingBasicPL2018 %>%
   ggplot(aes(x = Full_time_result, fill = expect_win)) +
   geom_bar() + theme_bw()
