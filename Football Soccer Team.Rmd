@@ -111,7 +111,7 @@ FIFA_players <- read.csv("players_18.csv")
 ```
 
 ```{r}
-bettingBasicPL2018 %>% 
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   rename(Full_time_result = FTR, Half_time_result = HTR)
 ```
 
