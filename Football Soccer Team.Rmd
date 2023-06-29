@@ -118,8 +118,8 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```{r}
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(
-    expect_win = ifelse(((odds_ft_home_team_win > odds_ft_draw) & (odds_ft_home_team_win > odds_ft_away_team_win)), "expected home wins", 
-                        ifelse((odds_ft_draw > odds_ft_home_team_win) & (odds_ft_draw > odds_ft_away_team_win), "expected draw", "expected away win")))
+    expect_win = ifelse(((odds_ft_home_team_win < odds_ft_draw) & (odds_ft_home_team_win < odds_ft_away_team_win)), "expected home wins", 
+                        ifelse((odds_ft_draw < odds_ft_home_team_win) & (odds_ft_draw < odds_ft_away_team_win), "expected draw", "expected away win")))
 ```
 
 
