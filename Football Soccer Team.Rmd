@@ -136,6 +136,93 @@ bettingBasicPL2018 %>%
   ggplot(aes(x = Full_time_result, fill = expect_win)) +
   geom_bar() + theme_bw()
 ```
+```{r}
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(result = ifelse((Full_time_result == "H") , 0, 
+                        ifelse((Full_time_result == "A") , 2, 1)))
+set.seed(50) 
+train_ids <- sample(1:nrow(bettingBasicPL2018),                    
+                                 ceiling(0.75 * nrow(bettingBasicPL2018)))
+train_pl <- bettingBasicPL2018[train_ids, ] 
+test_pl <- bettingBasicPL2018[-train_ids, ]
+# separate predictors and response, again 
+train_x <- dplyr::select(train_pl, Home_shots, home_team_possession, home_ppg) 
+train_y <- train_pl$result 
+test_x <- dplyr::select(test_pl, Home_shots, home_team_possession, home_ppg) 
+test_y <- test_pl$result
+```
 
+```{r}
+
+library(FNN)
+one_nn_train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = 1, algorithm = "brute")
+mean(train_y == one_nn_train_preds)
+
+one_nn_train_preds <- knn(train = train_x, test = test_x, cl = train_y, k = 1, algorithm = "brute")
+mean(test_y == one_nn_train_preds)
+```
+
+```{r}
+errs_train <- rep(0, 12) 
+errs_test <- rep(0, 12) 
+k_vals <- 1:12 
+for(k in k_vals) {  
+  train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = k, algorithm = "brute") 
+  errs_train[k] <- mean(!train_y == train_preds)  
+  test_preds <- knn(train = train_x, test = test_x, cl = train_y, k = k, algorithm = "brute")  
+  errs_test[k] <- mean(!test_y == test_preds)
+}
+```
+
+
+```{r}
+errors <- bind_cols(train_err = errs_train,                  
+                    test_err = errs_test,                   
+                    k = k_vals)
+errors %>%   pivot_longer(c(train_err, test_err),               
+                          names_to = "err_type") %>%   
+  ggplot(aes(x = k, y = value,             
+             color = err_type)) + 
+  geom_point() +  
+  geom_line() +  
+  labs(y = "Misclassification Rate",       
+       color = "Type of error") + 
+  theme_bw()
+```
+
+```{r}
+
+library(tidymodels)
+knn_reg_mod <- nearest_neighbor(
+  mode = "classification",
+  engine = "kknn",
+  neighbors = 5,
+  weight_func = NULL,
+  dist_power = NULL
+)
+
+#result_knn <- knn_reg_mod %>% 
+ # fit(result ~ Home_shots + home_ppg + home_team_possession, data= bettingBasicPL2018)
+
+#result_knn
+```
+
+```{r}
+ggplot(bettingBasicPL2018) +
+  geom_point(aes(x = Home_shots,
+                 y= home_team_possession,
+                 color = as.factor(result)
+            ),
+            size = 2) +
+  theme_bw()
+
+```
+
+
+```{r}
+
+
+  #firstlm <- glm(as.factor(Full_time_result) ~ Home_shots + home_ppg + home_team_possession, family = "poisson", data= bettingBasicPL2018)
+```
 
 
