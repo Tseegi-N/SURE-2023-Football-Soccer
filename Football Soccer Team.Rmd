@@ -275,7 +275,7 @@ p
 ```
 
 ```{r}
-wald.test(b = coef(expect_model), Sigma = vcov(expect_model), Terms = 1)
+#wald.test(b = coef(expect_model), Sigma = vcov(expect_model), Terms = 1)
 ```
 ```{r}
 newdata1 <- with(bettingBasicPL2018, data.frame(expect_point_H = mean(expect_point_H), Full_time_result_point = factor("H", "A", "D")))
@@ -286,7 +286,10 @@ newdata1
 ```{r}
 #line-up for Jan 19, 2019 match of Arsenal-Chelsea
 Ars_Che_2019Jan <- players_data %>% 
-  filter(season == "2018/2019", Current.Club == c("Arsenal", "Chelsea")) %>% 
-  mutate(starter_Jan19 = (ifelse(full_name %in% c("Kepa Arrizabalag",	"David Luiz",	"Cesar Azpilicueta",	"Marcos Alonso", "Antonio Rüdiger", "Mateo Kovačić", "Joringo", "N'Golo Kanté", "Willian", "Eden Hazard",	"Pedro Rodriguez", "Bernd Leno", "Sokratis Papastathopoulos",	"Laurent Koscielny",	"Sead Kolašinac",	"Hector Bellerin", "Aaron Ramsey", "Granit Xhaka", "Lucas Torreira", 	"Matteo Guendouzi",	"Pierre-Emerick Aubameyang",	"Alexandre Lacazette"), "Starter", "Other")))
+  filter(season == "2018/2019", Current.Club %in% c("Arsenal", "Chelsea")) %>% 
+  mutate(starter_Jan19 = (ifelse(full_name %in% c("Kepa Arrizabalaga",	"David Luiz",	"Cesar Azpilicueta",	"Marcos Alonso", "Antonio Rüdiger", "Mateo Kovačić", "Jorginho", "N'Golo Kanté", "Willian", "Eden Hazard",	"Pedro Rodriguez", "Bernd Leno", "Sokratis Papastathopoulos",	"Laurent Koscielny",	"Sead Kolašinac",	"Hector Bellerin", "Aaron Ramsey", "Granit Xhaka", "Lucas Torreira", 	"Matteo Guendouzi",	"Pierre-Emerick Aubameyang",	"Alexandre Lacazette"), "Starter", "Other")))
+
+Ars_Che_2019Jan
+
 ```
 
