@@ -293,3 +293,67 @@ Ars_Che_2019Jan
 
 ```
 
+```{r}
+library(readr)
+Fifa19 <- read_csv("players_19.csv")
+
+ArsChelFifa <- Fifa19 %>% 
+  filter(club_name %in% c("Arsenal", "Chelsea"))
+
+
+
+
+```
+
+```{r}
+ArsChelFifa$short_name <- 
+  stri_replace_all_regex(ArsChelFifa$short_name,
+                         pattern = c("E. Hazard", "Kepa",
+                                     "N. Kanté", "A. Ramsey",
+                                     "B. Leno", "A. Lacazette", "Cesc Fàbregas",
+                                     "Sokratis", "A. Iwobi", "A. Morata", "Azpilicueta", 
+                                     "M. Kovačić ", "G. Cahill", "A. Maitland-Niles", "G. Xhaka", "Héctor Bellerín", "S. Kolašinac", "L. Torreira", "P. Aubameyang", "M. Guendouzi", "L. Koscielny", "Pedro", "A. Rüdiger",
+                                     "J. Willock"),
+                         replacement = c("Eden Hazard", 
+                                         "Kepa Arrizabalaga", 
+                                         "N'Golo Kanté",
+                                         "Aaron Ramsey",
+                                         "Bernd Leno",
+                                         "Alexandre Lacazette", 
+                                         "Cesc Fabregas", 
+                                         "Sokartis Papastathopoulos",
+                                         "Alex Iwobi", 
+                                         "Alvaro Morata",
+                                         "Cesar Azpilicueta",
+                                         "Mateo Kovačić",
+                                         "Gary Cahill",
+                                         "Aisley Maitland-Niles",
+                                         "Granit Xhaka",
+                                         "Hector Bellerin",
+                                         "Sead Kolašinac",
+                                         "Lucas Torreira","Pierre-Emerrick Aubamayeang", "Matteo Guendouzi", "Laurent Koscielny", "Pedro Rodriguez",  "Antonio Rüdiger", "Joe Willock"),
+                         vectorize = FALSE)
+```
+
+```{r}
+ArsChelFifa <- rename(ArsChelFifa, full_name = short_name)
+```
+
+
+```{r}
+Ars_Che_2019Jan <- Ars_Che_2019Jan %>% 
+  filter(starter_Jan19 == "Starter")
+```
+
+```{r}
+ArsChelFifa <- ArsChelFifa %>%  
+  filter(full_name %in% c("Kepa Arrizabalaga",	"David Luiz",	"Cesar Azpilicueta",	"Marcos Alonso", "Antonio Rüdiger", "Mateo Kovačić", "Jorginho", "N'Golo Kanté", "Willian", "Eden Hazard",	"Pedro Rodriguez", "Bernd Leno", "Sokratis Papastathopoulos",	"Laurent Koscielny",	"Sead Kolašinac",	"Hector Bellerin", "Aaron Ramsey", "Granit Xhaka", "Lucas Torreira", 	"Matteo Guendouzi",	"Pierre-Emerick Aubameyang",	"Alexandre Lacazette"))
+```
+
+```{r}
+#ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
+ #                           by = "full_name")
+
+
+```
+
