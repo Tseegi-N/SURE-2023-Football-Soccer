@@ -226,3 +226,58 @@ ggplot(bettingBasicPL2018) +
 ```
 
 
+```{r}
+bettingBasicPL2018 <-  bettingBasicPL2018 %>% 
+  mutate(expect_bet_H = 1/B365H,
+         expect_bet_A = 1/B365A,
+         expect_bet_D = 1/B365D,
+         expect_point_H = expect_bet_H * 3 + expect_bet_D,
+         Full_time_result_point =  ifelse((Full_time_result == "H"), 3, 
+                        ifelse((Full_time_result == "D"), 1, 0)))
+  
+
+```
+
+
+
+```{r}
+bettingBasicPL2018 %>% 
+  ggplot(aes(x = Full_time_result,
+             y = expect_point_H)) +
+  geom_violin() +
+  geom_boxplot(width = .2) +
+  theme_bw()
+  
+```
+
+```{r}
+bettingBasicPL2018 %>% 
+  ggplot(aes(
+             x = expect_point_H)) +
+  geom_histogram(alpha = .25, position = "identity") +
+  facet_wrap(~ Full_time_result, nrow = 3)
+```
+
+
+```{r}
+#linear model
+library(nnet)
+expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
+summary(expect_model)
+```
+```{r}
+z <- summary(expect_model)$coefficients/summary(expect_model)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+p
+```
+
+```{r}
+library(aod)
+wald.test(b = coef(expect_model), Sigma = vcov(expect_model), Terms = 1)
+```
+```{r}
+newdata1 <- with(bettingBasicPL2018, data.frame(expect_point_H = mean(expect_point_H), Full_time_result_point = factor("H", "A", "D")))
+newdata1$rankP <- predict(expect_model, newdata = newdata1, type = "response")
+newdata1
+```
+
