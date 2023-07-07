@@ -12,6 +12,10 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(ggplot2)
+library(FNN)
+library(tidymodels)
+library(aod)
+library(nnet)
 ```
 
 ```{r}
@@ -136,6 +140,7 @@ bettingBasicPL2018 %>%
   ggplot(aes(x = Full_time_result, fill = expect_win)) +
   geom_bar() + theme_bw()
 ```
+
 ```{r}
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(result = ifelse((Full_time_result == "H") , 0, 
@@ -153,8 +158,6 @@ test_y <- test_pl$result
 ```
 
 ```{r}
-
-library(FNN)
 one_nn_train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = 1, algorithm = "brute")
 mean(train_y == one_nn_train_preds)
 
@@ -191,8 +194,6 @@ errors %>%   pivot_longer(c(train_err, test_err),
 ```
 
 ```{r}
-
-library(tidymodels)
 knn_reg_mod <- nearest_neighbor(
   mode = "classification",
   engine = "kknn",
@@ -231,7 +232,10 @@ bettingBasicPL2018 <-  bettingBasicPL2018 %>%
   mutate(expect_bet_H = 1/B365H,
          expect_bet_A = 1/B365A,
          expect_bet_D = 1/B365D,
-         expect_point_H = expect_bet_H * 3 + expect_bet_D,
+         marginal_prob_total = expect_bet_H + expect_bet_D + expect_bet_A,
+         percent_H = expect_bet_H *100/marginal_prob_total,
+         percent_D = expect_bet_D *100/marginal_prob_total,
+         expect_point_H = percent_H * 3 + percent_D,
          Full_time_result_point =  ifelse((Full_time_result == "H"), 3, 
                         ifelse((Full_time_result == "D"), 1, 0)))
   
@@ -261,7 +265,6 @@ bettingBasicPL2018 %>%
 
 ```{r}
 #linear model
-library(nnet)
 expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
 summary(expect_model)
 ```
@@ -272,7 +275,6 @@ p
 ```
 
 ```{r}
-library(aod)
 wald.test(b = coef(expect_model), Sigma = vcov(expect_model), Terms = 1)
 ```
 ```{r}
