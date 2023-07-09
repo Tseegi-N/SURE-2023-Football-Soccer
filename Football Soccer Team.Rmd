@@ -312,7 +312,7 @@ ArsChelFifa$short_name <-
                                      "N. Kanté", "A. Ramsey",
                                      "B. Leno", "A. Lacazette", "Cesc Fàbregas",
                                      "Sokratis", "A. Iwobi", "A. Morata", "Azpilicueta", 
-                                     "M. Kovačić ", "G. Cahill", "A. Maitland-Niles", "G. Xhaka", "Héctor Bellerín", "S. Kolašinac", "L. Torreira", "P. Aubameyang", "M. Guendouzi", "L. Koscielny", "Pedro", "A. Rüdiger",
+                                     "M. Kovačić", "G. Cahill", "A. Maitland-Niles", "G. Xhaka", "Héctor Bellerín", "S. Kolašinac", "L. Torreira", "P. Aubameyang", "M. Guendouzi", "L. Koscielny", "Pedro", "A. Rüdiger",
                                      "J. Willock"),
                          replacement = c("Eden Hazard", 
                                          "Kepa Arrizabalaga", 
@@ -321,7 +321,7 @@ ArsChelFifa$short_name <-
                                          "Bernd Leno",
                                          "Alexandre Lacazette", 
                                          "Cesc Fabregas", 
-                                         "Sokartis Papastathopoulos",
+                                         "Sokratis Papastathopoulos",
                                          "Alex Iwobi", 
                                          "Alvaro Morata",
                                          "Cesar Azpilicueta",
@@ -331,7 +331,7 @@ ArsChelFifa$short_name <-
                                          "Granit Xhaka",
                                          "Hector Bellerin",
                                          "Sead Kolašinac",
-                                         "Lucas Torreira","Pierre-Emerrick Aubamayeang", "Matteo Guendouzi", "Laurent Koscielny", "Pedro Rodriguez",  "Antonio Rüdiger", "Joe Willock"),
+                                         "Lucas Torreira","Pierre-Emerick Aubameyang", "Matteo Guendouzi", "Laurent Koscielny", "Pedro Rodriguez",  "Antonio Rüdiger", "Joe Willock"),
                          vectorize = FALSE)
 ```
 
@@ -351,8 +351,8 @@ ArsChelFifa <- ArsChelFifa %>%
 ```
 
 ```{r}
-#ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
- #                           by = "full_name")
+ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
+                            by = "full_name")
 
 
 ```
