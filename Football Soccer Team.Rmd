@@ -357,3 +357,25 @@ ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan,
 
 ```
 
+```{r}
+#player avg 
+chelsea_players <- ArsenalChelsea %>% 
+  filter(club_name == "Chelsea") %>% 
+  summarise(player_avg = mean(overall))
+
+arsenal_players <- ArsenalChelsea %>% 
+  filter(club_name == "Arsenal") %>% 
+  summarise(player_avg = mean(overall))
+
+#linear model with player metrics
+expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H + , data = bettingBasicPL2018)
+summary(expect_model)
+```
+
+```{r}
+exp(coef(expect_model))
+```
+```{r}
+pp <- fitted(expect_model)
+```
+
