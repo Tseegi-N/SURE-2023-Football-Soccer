@@ -490,12 +490,19 @@ test  %>%
   theme_bw()
 ```
 
+
+
+
 ```{r}
-test %>% 
-  group_by(club_name, position) %>% 
-  mutate(w = min_per_match / sum(min_per_match))
+# Step 1: Calculate weighted minutes
+total_average_minutes <- sum(test$min_per_match)
+weighted_minutes <- (test$min_per_match / total_average_minutes) * 90
 
-test$overall <- test$overall * test$w
+# Step 2: Assign weights to positions
+position_weights <- c("Forward" = 1.5, "Midfielder" = 1.2, "Defender" = 1, "Goalkeeper" = 0.8)
 
+# Step 3: Calculate weighted scores
+test <- test %>%
+  mutate(weighted_ranking = weighted_minutes * position_weights[match(position, names(position_weights))])
 ```
 
