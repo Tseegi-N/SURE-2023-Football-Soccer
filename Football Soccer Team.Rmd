@@ -494,15 +494,41 @@ test  %>%
 
 
 ```{r}
-# Step 1: Calculate weighted minutes
+
 total_average_minutes <- sum(test$min_per_match)
 weighted_minutes <- (test$min_per_match / total_average_minutes) * 90
 
-# Step 2: Assign weights to positions
+
 position_weights <- c("Forward" = 1.5, "Midfielder" = 1.2, "Defender" = 1, "Goalkeeper" = 0.8)
 
-# Step 3: Calculate weighted scores
+
 test <- test %>%
   mutate(weighted_players_minutes = weighted_minutes * position_weights[match(position, names(position_weights))])
+```
+
+```{r}
+
+min_weighted_minutes <- min(test$weighted_players_minutes)
+max_weighted_minutes <- max(test$weighted_players_minutes)
+
+
+position_rankings <- test %>%
+  group_by(club_name, position) %>%
+  summarize(total_weighted_minutes = sum(weighted_players_minutes))
+
+
+position_rankings <- position_rankings %>%
+  group_by(club_name) %>%
+  mutate(normalized_weighted_minutes = (total_weighted_minutes - min_weighted_minutes) /
+                                         (max_weighted_minutes - min_weighted_minutes) * 100)
+
+
+position_rankings <- position_rankings %>%
+  group_by(club_name) %>%
+  mutate(position_rank = rank(-normalized_weighted_minutes))
+
+
+print(position_rankings)
+
 ```
 
