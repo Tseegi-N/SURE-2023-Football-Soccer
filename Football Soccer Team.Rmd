@@ -368,14 +368,134 @@ arsenal_players <- ArsenalChelsea %>%
   summarise(player_avg = mean(overall))
 
 #linear model with player metrics
-expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H + , data = bettingBasicPL2018)
+expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H  , data = bettingBasicPL2018)
 summary(expect_model)
 ```
 
 ```{r}
 exp(coef(expect_model))
 ```
+
 ```{r}
 pp <- fitted(expect_model)
+```
+
+```{r}
+library(readr)
+PL17_18 <- read_csv("england-premier-league-teams-2017-to-2018-stats (2).csv")
+```
+
+```{r}
+PL17_18$common_name <- 
+  stri_replace_all_regex(PL17_18$common_name,
+                         pattern = c("Manchester United", "Bournemouth",
+                                     "Huddersfield", "Newcastle United",
+                                     "Wolves", "Cardiff", "Leicester City",
+                                     "Tottenham Hotspur", "West Ham United", "Brighton & Hove Albion",
+                                     "Manchester City", "Stoke City", "West Bromwich Albion", "AFC Bournemouth","Swansea City"),
+                         replacement = c("Man United", 
+                                         "AFC Bournemouth", 
+                                         "Huddersfield Town",
+                                         "Newcastle",
+                                         "Wolverhampton Wanderers",
+                                         "Cardiff City", 
+                                         "Leicester", 
+                                         "Tottenham",
+                                         "West Ham", 
+                                         "Brighton",
+                                         "Man City", "Stoke", "West Brom", "Bournemouth", "Swansea"),
+                         vectorize = FALSE)
+```
+
+
+```{r}
+PL17_18 <- PL17_18 %>%  
+  filter(Team %in% c("Man United", "AFC Bournemouth", 
+                                         "Newcastle",
+                                         "Cardiff City", 
+                                         "Leicester", 
+                                         "Tottenham",
+                                         "West Ham", 
+                                         "Brighton",
+                                         "Man City", "Stoke", "West Brom", "Bournemouth", "Swansea", "Arsenal", "Liverpool", "Chelsea"))
+```
+
+
+```{r warning = TRUE}
+#PL17_18 <- rename(PL17_18, Team = common_name)
+#crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
+#PL17_18 <- left_join(PL17_18, crests, by="Team")
+
+URL <- PL17_18$URL
+
+library(ggimage)
+ggplot(PL17_18, 
+  aes(x=points_per_game_home, y=points_per_game_away, label=Team)) + 
+  geom_vline(xintercept = 0) + 
+  geom_hline(yintercept = 0) +
+  xlab("Pre Match Spread") + 
+  ylab("Post Match Spread") + 
+  geom_image(aes(image=URL))
+
+```
+
+```{r}
+Fifa19 <- Fifa19 %>% 
+  filter(league_name == "English Premier League") 
+```
+
+
+```{r}
+Fifa19[c("Primary_position", "Secondary")] <- str_split_fixed(Fifa19$player_positions, ',',2)
+
+Fifa19$Primary_position
+
+
+```
+
+```{r}
+Fifa19 <- Fifa19 %>% 
+  mutate(Primary_position = case_when(
+    (Primary_position %in% c("LW","RW", "ST", "CF") ~ "Forward"),
+     (Primary_position %in% c("LM","RM", "CM", "CAM", "CDM") ~ "Midfielder"),
+     (Primary_position %in% c("LB","RB", "CB", "RWB", "LWB") ~ "Defender"),
+    TRUE ~ "Goalkeeper"
+    
+    
+  ))
+
+Fifa19$Primary_position
+```
+
+```{r}
+players_data$birthday_GMT <- format(as.Date(players_data$birthday_GMT), "%d/%m/%Y")
+Fifa19$dob <-format(as.Date(Fifa19$dob,format="%d/%m/%Y"),"%d/%m/%Y")
+players_data$dob <- players_data$birthday_GMT
+players_data$club_name <- players_data$Current.Club
+test <- merge(players_data,Fifa19,by=c("club_name","dob"))
+
+```
+
+```{r}
+mins_keans <- 
+  kmeans(dplyr::select(test, min_per_match, overall),
+         algorithm = "Lloyd", centers = 4,
+         nstart = 1)
+
+test  %>% 
+  mutate(minclusters =
+           as.factor(mins_keans$cluster)) %>% 
+  ggplot(aes(x = min_per_match, y = overall, color = minclusters )) +
+  geom_point() +
+  theme_bw()
+```
+
+```{r}
+test %>% 
+  group_by(club_name, position) %>% 
+  mutate(w = min_per_match / sum(min_per_match))
+
+test$overall <- test$overall * test$w
+
 ```
 
