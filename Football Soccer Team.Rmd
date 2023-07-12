@@ -503,6 +503,6 @@ position_weights <- c("Forward" = 1.5, "Midfielder" = 1.2, "Defender" = 1, "Goal
 
 # Step 3: Calculate weighted scores
 test <- test %>%
-  mutate(weighted_ranking = weighted_minutes * position_weights[match(position, names(position_weights))])
+  mutate(weighted_players_minutes = weighted_minutes * position_weights[match(position, names(position_weights))])
 ```
 
