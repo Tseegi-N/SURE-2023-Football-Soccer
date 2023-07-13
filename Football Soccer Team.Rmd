@@ -648,6 +648,7 @@ init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expe
                       family = binomial, method = "REML")
 summary(init_logit_gam_point_streak_xg)
 ```
+
 ```{r}
 test$weightedminutes <- test$min_per_match / 90
 
@@ -666,3 +667,47 @@ teams
 
 ```
 
+```{r}
+#linear model
+expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
+summary(expect_model)
+
+expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data)
+summary(expect_model)
+
+predictions <- predict(expect_model, newdata = test_data)
+
+library(scoring)
+#Predicting the grier score
+actual_outcomes <- test_data$Full_time_result_point 
+predicted_probs <- predict(expect_model, newdata = test_data, type = "probs")  
+cbind(actual_outcomes, predicted_probs)
+
+library(yardstick)
+data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3)
+
+```
+
+```{r}
+predictions <- predict(init_logit_gam, newdata = test_data)
+
+library(scoring)
+#Predicting the grier score
+actual_outcomes <- test_data$Full_time_result_point 
+predicted_probs <- predict(expect_model, newdata = test_data, type = "probs")  
+cbind(actual_outcomes, predicted_probs)
+
+library(yardstick)
+data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3)
+
+```
