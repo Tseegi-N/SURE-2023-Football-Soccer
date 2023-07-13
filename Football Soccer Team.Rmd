@@ -275,15 +275,6 @@ p
 ```
 
 ```{r}
-#wald.test(b = coef(expect_model), Sigma = vcov(expect_model), Terms = 1)
-```
-```{r}
-newdata1 <- with(bettingBasicPL2018, data.frame(expect_point_H = mean(expect_point_H), Full_time_result_point = factor("H", "A", "D")))
-newdata1$rankP <- predict(expect_model, newdata = newdata1, type = "response")
-newdata1
-```
-
-```{r}
 #line-up for Jan 19, 2019 match of Arsenal-Chelsea
 Ars_Che_2019Jan <- players_data %>% 
   filter(season == "2018/2019", Current.Club %in% c("Arsenal", "Chelsea")) %>% 
