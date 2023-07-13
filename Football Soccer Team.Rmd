@@ -648,4 +648,21 @@ init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expe
                       family = binomial, method = "REML")
 summary(init_logit_gam_point_streak_xg)
 ```
+```{r}
+test$weightedminutes <- test$min_per_match / 90
+
+test$weighted_overall_rating <- test$weightedminutes * test$over
+
+print(test$weighted_overall_rating)
+```
  
+```{r}
+teams <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average)
+
+teams
+
+```
+
