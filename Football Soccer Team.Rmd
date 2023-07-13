@@ -263,16 +263,6 @@ bettingBasicPL2018 %>%
 ```
 
 
-```{r}
-#linear model
-expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
-summary(expect_model)
-```
-```{r}
-z <- summary(expect_model)$coefficients/summary(expect_model)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2
-p
-```
 
 ```{r}
 #line-up for Jan 19, 2019 match of Arsenal-Chelsea
@@ -357,19 +347,8 @@ chelsea_players <- ArsenalChelsea %>%
 arsenal_players <- ArsenalChelsea %>% 
   filter(club_name == "Arsenal") %>% 
   summarise(player_avg = mean(overall))
-
-#linear model with player metrics
-expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H  , data = bettingBasicPL2018)
-summary(expect_model)
 ```
 
-```{r}
-exp(coef(expect_model))
-```
-
-```{r}
-pp <- fitted(expect_model)
-```
 
 ```{r}
 library(readr)
@@ -421,7 +400,7 @@ URL <- PL17_18$URL
 
 library(ggimage)
 ggplot(PL17_18, 
-  aes(x=points_per_game_home, y=points_per_game_away, label=Team)) + 
+  aes(x=points_per_game_home, y=points_per_game_away, label=team_name)) + 
   geom_vline(xintercept = 0) + 
   geom_hline(yintercept = 0) +
   xlab("Pre Match Spread") + 
