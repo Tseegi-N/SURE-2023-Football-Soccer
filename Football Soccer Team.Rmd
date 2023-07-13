@@ -523,3 +523,150 @@ print(position_rankings)
 
 ```
 
+```{r}
+#function to compute streak
+streak <- function(df, home, away, index){
+  streak_data <- df[1:(index-1),] %>% 
+    filter((HomeTeam %in% c(home, away) | AwayTeam %in% c(home, away)))
+
+  n_rows <- nrow(streak_data)
+  streak_data <- streak_data[max(1,n_rows-9):n_rows,]
+  streak_data <- streak_data %>% 
+ 
+    mutate(
+    opposing_team = ifelse(HomeTeam %in% c(home, away), AwayTeam, HomeTeam),
+    team = ifelse(HomeTeam %in% c(home, away), HomeTeam, AwayTeam),
+    weighted_points = case_when(
+      opposing_team %in% c("Liverpool", "Manchester City", "Manchester United", 
+                           "Tottenham Hotspur", "Liverpool") ~ 1.5,
+      opposing_team %in% c("Arsenal", "Burnley", "Leicester City", "Newcastle United", 
+                           "Everton") ~ 1.25,
+      opposing_team %in% c("Westham United", "Crystal Palace", "Brighton & Hove Albion", 
+                           "AFC Bournemouth", "Watford") ~ 0.75,
+      TRUE ~ 0.5),
+    Home_away = ifelse(HomeTeam %in% c(home, away), "H", "A"),
+    win = case_when(((Home_away == "H" & Full_time_result == "H") | 
+                       (Home_away == "A" & Full_time_result == "A")) ~ 1,
+                    (Full_time_result == "D") ~ 0, TRUE ~ (-1)))
+  
+  home_streak <- streak_data %>% 
+    filter(team == home) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  away_streak <- streak_data %>% 
+    filter(team == away) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  streak <- paste(c(home_streak, away_streak))
+ 
+  return(streak)
+}
+```
+ 
+
+```{r}
+#compute on one instance
+streak_score <- streak(bettingBasicPL2018, "Arsenal", "Chelsea", 221)
+
+#apply to df
+bettingBasicPL2018 <- bettingBasicPL2018 %>% mutate(streak_h = NA, streak_a = NA)
+for(i in 1:nrow(bettingBasicPL2018)) {
+  streak_score <- streak(bettingBasicPL2018, bettingBasicPL2018$HomeTeam[i],
+                         bettingBasicPL2018$AwayTeam[i], i)
+
+  bettingBasicPL2018$streak_h[i] <- streak_score[1]
+  bettingBasicPL2018$streak_a[i] <- streak_score[2]
+} 
+```
+ 
+
+```{r}
+#compute streak diff
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(streak_diff = as.integer(streak_h) - as.integer(streak_a))
+```
+ 
+```{r}
+#set-up training data
+set.seed(907)
+ 
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(is_train = sample(rep(0:1, length.out = nrow(bettingBasicPL2018))))
+ 
+#set-up models
+library(mgcv)
+library(nlme)
+init_logit_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) + s(streak_diff),
+                      data = filter(bettingBasicPL2018, is_train == 1),
+                      family = binomial, method = "REML")
+ 
+init_logit_base_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H),
+                           data = filter(bettingBasicPL2018, is_train == 1),
+                           family = binomial, method = "REML")
+```
+ 
+```{r}
+#check for summary
+summary(init_logit_gam)
+summary(init_logit_base_gam)
+```
+ 
+```{r}
+gam.check(init_logit_gam)
+```
+
+```{r}
+gam.check(init_logit_base_gam)
+```
+ 
+```{r}
+#check fot fitness of a model
+bettingBasicPL2018 <- bettingBasicPL2018 %>%
+  mutate(init_gam_result_prob = as.numeric(predict(init_logit_gam,
+                                                   newdata = bettingBasicPL2018,
+                                                   type = "response")),
+         init_gam_result_class = as.numeric(init_gam_result_prob >= 0.5))
+ 
+bettingBasicPL2018 %>%
+  group_by(is_train) %>%
+  summarize(correct = mean(init_gam_result_class))
+```
+ 
+```{r}
+#fitness of a model
+bettingBasicPL2018 <- bettingBasicPL2018 %>%
+  mutate(init_gam_result_base_prob = as.numeric(predict(init_logit_base_gam,
+                                                        newdata = bettingBasicPL2018,
+                                                        type = "response")),
+         init_gam_result_base_class = as.numeric(init_gam_result_base_prob >= 0.5))
+ 
+bettingBasicPL2018 %>%
+  group_by(is_train) %>%
+  summarize(correct = mean(init_gam_result_base_class))
+```
+ 
+
+```{r}
+#expected goals
+bettingBasicPL2018 <- bettingBasicPL2018 %>%
+  mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
+
+init_logit_gam_xg <- gam(as.factor(Full_time_result_point) ~ s(xg_diff),
+                      data = filter(bettingBasicPL2018, is_train == 1),
+                      family = binomial, method = "REML")
+
+summary(init_logit_gam_xg)
+```
+ 
+
+```{r}
+#with all
+init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H)
+                      + s(streak_diff) + s(xg_diff),
+                      data = filter(bettingBasicPL2018, is_train == 1),
+                      family = binomial, method = "REML")
+summary(init_logit_gam_point_streak_xg)
+```
+ 
