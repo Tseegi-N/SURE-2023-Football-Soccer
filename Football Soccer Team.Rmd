@@ -401,7 +401,7 @@ PL17_18$common_name <-
 
 ```{r}
 PL17_18 <- PL17_18 %>%  
-  filter(Team %in% c("Man United", "AFC Bournemouth", 
+  filter(team_name %in% c("Man United", "AFC Bournemouth", 
                                          "Newcastle",
                                          "Cardiff City", 
                                          "Leicester", 
