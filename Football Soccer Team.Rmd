@@ -578,6 +578,9 @@ train_data_PL <- bettingBasicPL2018 %>%
 
 test_data_PL <- bettingBasicPL2018 %>% 
   filter(month %in% 2:5)
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
  
 head(bettingBasicPL2018$Full_time_result_num) 
 #set-up models
@@ -585,12 +588,12 @@ library(mgcv)
 library(nlme)
 init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
                            ~s(expect_point_H) + s(streak_diff)),
-                      data = filter(bettingBasicPL2018, is_train == 1),
+                      data = filter(train_data_PL),
                       family = multinom(K = 2))
  
 init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
                            family = multinom(K = 2), 
-                           data = filter(bettingBasicPL2018, is_train == 1))
+                           data = train_data_PL)
 ```
  
 ```{r}
@@ -639,7 +642,7 @@ bettingBasicPL2018 %>%
 init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
                               + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
                               + s(xg_diff)),
-                      data = filter(bettingBasicPL2018, is_train == 1),
+                      data = train_data_PL,
                       family = multinom(K = 2))
 
 summary(init_logit_gam_xg)
@@ -648,8 +651,9 @@ summary(init_logit_gam_xg)
 
 ```{r}
 #with all
-init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H)
-                      + s(streak_diff) + s(xg_diff),
+init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_point_H)
+                      + s(streak_diff) + s(xg_diff), ~ s(expect_point_H)
+                      + s(streak_diff) + s(xg_diff)),
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
 summary(init_logit_gam_point_streak_xg)
@@ -674,20 +678,15 @@ teams
 ```
 
 ```{r}
-set.seed(234)
-train_indices <- sample(nrow(bettingBasicPL2018), nrow(bettingBasicPL2018) * 0.7)
-train_data <- bettingBasicPL2018[train_indices, ]
-test_data <- bettingBasicPL2018[-train_indices, ]
-
-expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data)
+expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
 summary(expect_model)
 
-predictions <- predict(expect_model, newdata = test_data)
+predictions <- predict(expect_model, newdata = test_data_PL)
 
 library(scoring)
 #Predicting the grier score
-actual_outcomes <- test_data$Full_time_result_point 
-predicted_probs <- predict(expect_model, newdata = test_data, type = "probs")  
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- predict(expect_model, newdata = test_data_PL, type = "probs")  
 cbind(actual_outcomes, predicted_probs)
 
 library(yardstick)
@@ -700,16 +699,11 @@ data.frame(
 ```
 
 ```{r}
-training_data_gams <- bettingBasicPL2018 %>% 
-  filter(is_train == 1)
-test_data_gams <- bettingBasicPL2018 %>% 
-  filter(is_train == 0)
-
-predictions <- predict(init_logit_base_gam, newdata = test_data_gams)
+predictions <- predict(init_logit_base_gam, newdata = test_data_PL)
 
 #Predicting the grier score
-actual_outcomes_gams <- test_data_gams$Full_time_result_point 
-predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_gams, type = "response")  
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
 data.frame(
@@ -721,11 +715,11 @@ data.frame(
 
 ```
 ```{r}
-predictions <- predict(init_logit_gam, newdata = test_data_gams)
+predictions <- predict(init_logit_gam, newdata = test_data_PL)
 
 #Predicting the grier score
-actual_outcomes_gams <- test_data_gams$Full_time_result_point 
-predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_gams, type = "response")  
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
 data.frame(
@@ -736,11 +730,11 @@ data.frame(
   brier_class(actual_outcomes_gams, X1:X3)
 ```
 ```{r}
-predictions <- predict(init_logit_gam_xg, newdata = test_data_gams)
+predictions <- predict(init_logit_gam_xg, newdata = test_data_PL)
 
 #Predicting the grier score
-actual_outcomes_gams <- test_data_gams$Full_time_result_point 
-predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_gams, type = "response")  
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
 data.frame(
