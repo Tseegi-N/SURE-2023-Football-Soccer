@@ -572,6 +572,9 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
  
 ```{r}
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
+
 #set-up training data
 train_data_PL <- bettingBasicPL2018 %>% 
   filter(!month %in% 2:5)
@@ -579,8 +582,6 @@ train_data_PL <- bettingBasicPL2018 %>%
 test_data_PL <- bettingBasicPL2018 %>% 
   filter(month %in% 2:5)
 
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
  
 head(bettingBasicPL2018$Full_time_result_num) 
 #set-up models
@@ -714,6 +715,7 @@ data.frame(
   brier_class(actual_outcomes_gams, X1:X3)
 
 ```
+
 ```{r}
 predictions <- predict(init_logit_gam, newdata = test_data_PL)
 
@@ -729,6 +731,7 @@ data.frame(
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
   brier_class(actual_outcomes_gams, X1:X3)
 ```
+
 ```{r}
 predictions <- predict(init_logit_gam_xg, newdata = test_data_PL)
 
@@ -745,4 +748,23 @@ data.frame(
   brier_class(actual_outcomes_gams, X1:X3)
 ```
 
+```{r}
+library(ranger)
+
+random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
+
+predictions <- predict(random_forest, data = test_data_PL)
+
+#Predicting the grier score
+rf_outcomes <- test_data_PL$Full_time_result_point 
+rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
+cbind(rf_outcomes, rf_probs)
+
+data.frame(
+  rf_outcomes,
+  rf_probs
+) %>% 
+  mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+  brier_class(rf_outcomes, X1:X3)
+```
 
