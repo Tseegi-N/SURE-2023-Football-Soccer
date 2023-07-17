@@ -1,0 +1,47 @@
+---
+title: "Maria hi"
+output: html_document
+date: "2023-07-07"
+---
+
+```{r}
+streak_Jan19 <- bettingBasicPL2018 %>%
+  filter(
+    HomeTeam %in% c("Chelsea", "Arsenal") |
+      AwayTeam %in% c("Chelsea", "Arsenal"),
+    between(
+      as_date(datetime),
+      as_date("2018-12-22"),
+      as_date("2019-01-12")
+    )
+  ) %>%
+  mutate(
+    opposing_team = ifelse(HomeTeam %in% c("Arsenal", "Chelsea"), AwayTeam, HomeTeam),
+    team = ifelse(HomeTeam %in% c("Arsenal", "Chelsea"), HomeTeam, AwayTeam),
+    weighted_points = case_when(
+      opposing_team %in% c("Liverpool") ~ 1.5,
+      opposing_team %in% c("Arsenal", "Burnley", "Leicester City", "Newcastle United") ~ 1.25,
+      opposing_team %in% c("Westham United", "Crystal Palace", "Brighton & Hove Albion") ~ 0.75,
+      TRUE ~ 0.5
+    ),
+     Home_away = ifelse(HomeTeam %in% c("Arsenal", "Chelsea"), "H", "A"),
+    win = case_when(
+      ((Home_away == "H" & Full_time_result == "H") | (Home_away == "A" & Full_time_result == "A")) ~ 1,
+      (Full_time_result == "D") ~ 0,
+      TRUE ~ (-1)
+    )
+  )
+```
+
+The ranking data is scrapped from the following website: https://www.eurosport.com/football/premier-league/2017-2018/standings.shtml 
+
+```{r}
+arsenal_streak <- streak_Jan19 %>% 
+  filter(team == "Arsenal") %>% 
+  summarize(streak = sum(win))
+
+chelsea_streak <- streak_Jan19 %>% 
+  filter(team == "Chelsea") %>% 
+  summarize(streak = sum(win))
+```
+

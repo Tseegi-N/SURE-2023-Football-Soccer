@@ -19,7 +19,7 @@ library(nnet)
 ```
 
 ```{r}
-#fotmob data
+#fotmob matches data
 Comp <- FreeCompetitions()
 Matches <- FreeMatches(Comp)
 fotmob_matches <- fotmob_get_matches_by_date(date = c("20210925"))
@@ -129,7 +129,7 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
 
 ```{r}
-#mosiac plot to compare expected and actual win rate
+#mosaic plot to compare expected and actual win rate
 mosaicplot(table(bettingBasicPL2018$Full_time_result, bettingBasicPL2018$expect_win),
 shade = TRUE, main = "Relationship between expected win and actual win?")
 ```
@@ -158,49 +158,41 @@ test_y <- test_pl$result
 ```
 
 ```{r}
-one_nn_train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = 1, algorithm = "brute")
-mean(train_y == one_nn_train_preds)
-
-one_nn_train_preds <- knn(train = train_x, test = test_x, cl = train_y, k = 1, algorithm = "brute")
-mean(test_y == one_nn_train_preds)
-```
-
-```{r}
-errs_train <- rep(0, 12) 
-errs_test <- rep(0, 12) 
-k_vals <- 1:12 
-for(k in k_vals) {  
-  train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = k, algorithm = "brute") 
-  errs_train[k] <- mean(!train_y == train_preds)  
-  test_preds <- knn(train = train_x, test = test_x, cl = train_y, k = k, algorithm = "brute")  
-  errs_test[k] <- mean(!test_y == test_preds)
-}
+#errs_train <- rep(0, 12) 
+#errs_test <- rep(0, 12) 
+#k_vals <- 1:12 
+#for(k in k_vals) {  
+ # train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = k, algorithm = "brute") 
+ # errs_train[k] <- mean(!train_y == train_preds)  
+  #test_preds <- knn(train = train_x, test = test_x, cl = train_y, k = k, algorithm = "brute")  
+ # errs_test[k] <- mean(!test_y == test_preds)
+#}
 ```
 
 
 ```{r}
-errors <- bind_cols(train_err = errs_train,                  
-                    test_err = errs_test,                   
-                    k = k_vals)
-errors %>%   pivot_longer(c(train_err, test_err),               
-                          names_to = "err_type") %>%   
-  ggplot(aes(x = k, y = value,             
-             color = err_type)) + 
-  geom_point() +  
-  geom_line() +  
-  labs(y = "Misclassification Rate",       
-       color = "Type of error") + 
-  theme_bw()
+# errors <- bind_cols(train_err = errs_train,                  
+#                     test_err = errs_test,                   
+#                     k = k_vals)
+# errors %>%   pivot_longer(c(train_err, test_err),               
+#                           names_to = "err_type") %>%   
+#   ggplot(aes(x = k, y = value,             
+#              color = err_type)) + 
+#   geom_point() +  
+#   geom_line() +  
+#   labs(y = "Misclassification Rate",       
+#        color = "Type of error") + 
+#   theme_bw()
 ```
 
 ```{r}
-knn_reg_mod <- nearest_neighbor(
-  mode = "classification",
-  engine = "kknn",
-  neighbors = 5,
-  weight_func = NULL,
-  dist_power = NULL
-)
+# knn_reg_mod <- nearest_neighbor(
+#   mode = "classification",
+#   engine = "kknn",
+#   neighbors = 5,
+#   weight_func = NULL,
+#   dist_power = NULL
+# )
 
 #result_knn <- knn_reg_mod %>% 
  # fit(result ~ Home_shots + home_ppg + home_team_possession, data= bettingBasicPL2018)
@@ -209,6 +201,7 @@ knn_reg_mod <- nearest_neighbor(
 ```
 
 ```{r}
+#possesion vs shots scatterplot
 ggplot(bettingBasicPL2018) +
   geom_point(aes(x = Home_shots,
                  y= home_team_possession,
@@ -228,6 +221,7 @@ ggplot(bettingBasicPL2018) +
 
 
 ```{r}
+#converting betting odds to percentages
 bettingBasicPL2018 <-  bettingBasicPL2018 %>% 
   mutate(expect_bet_H = 1/B365H,
          expect_bet_A = 1/B365A,
@@ -245,6 +239,7 @@ bettingBasicPL2018 <-  bettingBasicPL2018 %>%
 
 
 ```{r}
+#violin plot expected points
 bettingBasicPL2018 %>% 
   ggplot(aes(x = Full_time_result,
              y = expect_point_H)) +
@@ -254,7 +249,9 @@ bettingBasicPL2018 %>%
   
 ```
 
+
 ```{r}
+#HISTOGRAM OF DIFFERENT RESULTS
 bettingBasicPL2018 %>% 
   ggplot(aes(
              x = expect_point_H)) +
@@ -263,16 +260,6 @@ bettingBasicPL2018 %>%
 ```
 
 
-```{r}
-#linear model
-expect_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
-summary(expect_model)
-```
-```{r}
-z <- summary(expect_model)$coefficients/summary(expect_model)$standard.errors
-p <- (1 - pnorm(abs(z), 0, 1)) * 2
-p
-```
 
 ```{r}
 #line-up for Jan 19, 2019 match of Arsenal-Chelsea
@@ -290,13 +277,10 @@ Fifa19 <- read_csv("players_19.csv")
 
 ArsChelFifa <- Fifa19 %>% 
   filter(club_name %in% c("Arsenal", "Chelsea"))
-
-
-
-
 ```
 
 ```{r}
+#matching names
 ArsChelFifa$short_name <- 
   stri_replace_all_regex(ArsChelFifa$short_name,
                          pattern = c("E. Hazard", "Kepa",
@@ -327,6 +311,7 @@ ArsChelFifa$short_name <-
 ```
 
 ```{r}
+#renaming 
 ArsChelFifa <- rename(ArsChelFifa, full_name = short_name)
 ```
 
@@ -342,6 +327,7 @@ ArsChelFifa <- ArsChelFifa %>%
 ```
 
 ```{r}
+#merging the fifa data
 ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
                             by = "full_name")
 
@@ -357,19 +343,15 @@ chelsea_players <- ArsenalChelsea %>%
 arsenal_players <- ArsenalChelsea %>% 
   filter(club_name == "Arsenal") %>% 
   summarise(player_avg = mean(overall))
+<<<<<<< HEAD
 
 #linear model with player metrics
 expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
 summary(expect_model)
+=======
+>>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 ```
 
-```{r}
-exp(coef(expect_model))
-```
-
-```{r}
-pp <- fitted(expect_model)
-```
 
 ```{r}
 library(readr)
@@ -401,7 +383,7 @@ PL17_18$common_name <-
 
 ```{r}
 PL17_18 <- PL17_18 %>%  
-  filter(Team %in% c("Man United", "AFC Bournemouth", 
+  filter(team_name %in% c("Man United", "AFC Bournemouth", 
                                          "Newcastle",
                                          "Cardiff City", 
                                          "Leicester", 
@@ -413,15 +395,15 @@ PL17_18 <- PL17_18 %>%
 
 
 ```{r warning = TRUE}
-#PL17_18 <- rename(PL17_18, Team = common_name)
-#crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
-#PL17_18 <- left_join(PL17_18, crests, by="Team")
+PL17_18 <- rename(PL17_18, Team = common_name)
+crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
+PL17_18 <- left_join(PL17_18, crests, by="Team")
 
 URL <- PL17_18$URL
 
 library(ggimage)
 ggplot(PL17_18, 
-  aes(x=points_per_game_home, y=points_per_game_away, label=Team)) + 
+  aes(x=points_per_game_home, y=points_per_game_away, label=team_name)) + 
   geom_vline(xintercept = 0) + 
   geom_hline(yintercept = 0) +
   xlab("Pre Match Spread") + 
@@ -451,10 +433,7 @@ Fifa19 <- Fifa19 %>%
      (Primary_position %in% c("LM","RM", "CM", "CAM", "CDM") ~ "Midfielder"),
      (Primary_position %in% c("LB","RB", "CB", "RWB", "LWB") ~ "Defender"),
     TRUE ~ "Goalkeeper"
-    
-    
   ))
-
 Fifa19$Primary_position
 ```
 
@@ -468,20 +447,22 @@ test <- merge(players_data,Fifa19,by=c("club_name","dob"))
 ```
 
 ```{r}
-mins_keans <- 
-  kmeans(dplyr::select(test, min_per_match, overall),
-         algorithm = "Lloyd", centers = 4,
-         nstart = 1)
-
-test  %>% 
-  mutate(minclusters =
-           as.factor(mins_keans$cluster)) %>% 
-  ggplot(aes(x = min_per_match, y = overall, color = minclusters )) +
-  geom_point() +
-  theme_bw()
+# #
+# mins_keans <- 
+#   kmeans(dplyr::select(test, min_per_match, overall),
+#          algorithm = "Lloyd", centers = 4,
+#          nstart = 1)
+# 
+# test  %>% 
+#   mutate(minclusters =
+#            as.factor(mins_keans$cluster)) %>% 
+#   ggplot(aes(x = min_per_match, y = overall, color = minclusters )) +
+#   geom_point() +
+#   theme_bw()
 ```
 
 
+<<<<<<< HEAD
 
 
 ```{r}
@@ -525,6 +506,9 @@ print(position_rankings)
 ```
 
 =======
+=======
+```{r}
+>>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 #function to compute streak
 
 streak <- function(df, home, away, index){
@@ -591,10 +575,15 @@ for(i in 1:nrow(bettingBasicPL2018)) {
 #compute streak diff
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(streak_diff = as.integer(streak_h) - as.integer(streak_a))
+
+#expected goals
+bettingBasicPL2018 <- bettingBasicPL2018 %>%
+  mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
 ```
 
 
 ```{r}
+<<<<<<< HEAD
 #set-up training data
 set.seed(907)
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
@@ -610,6 +599,31 @@ init_logit_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) + s(
 init_logit_base_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H),
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
+=======
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
+
+#set-up training data
+train_data_PL <- bettingBasicPL2018 %>% 
+  filter(!month %in% 2:5)
+
+test_data_PL <- bettingBasicPL2018 %>% 
+  filter(month %in% 2:5)
+
+ 
+head(bettingBasicPL2018$Full_time_result_num) 
+#set-up models
+library(mgcv)
+library(nlme)
+init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
+                           ~s(expect_point_H) + s(streak_diff)),
+                      data = filter(train_data_PL),
+                      family = multinom(K = 2))
+ 
+init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
+                           family = multinom(K = 2), 
+                           data = train_data_PL)
+>>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 ```
 
 ```{r}
@@ -653,25 +667,150 @@ bettingBasicPL2018 %>%
 ```
 
 ```{r}
+<<<<<<< HEAD
 #expected goals
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
+=======
+>>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 
-init_logit_gam_xg <- gam(as.factor(Full_time_result_point) ~ s(xg_diff),
-                      data = filter(bettingBasicPL2018, is_train == 1),
-                      family = binomial, method = "REML")
+init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff)),
+                      data = train_data_PL,
+                      family = multinom(K = 2))
 
 summary(init_logit_gam_xg)
 ```
 
 ```{r}
 #with all
+<<<<<<< HEAD
 init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) 
                       + s(streak_diff) + s(xg_diff),
+=======
+init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_point_H)
+                      + s(streak_diff) + s(xg_diff), ~ s(expect_point_H)
+                      + s(streak_diff) + s(xg_diff)),
+>>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
 
 summary(init_logit_gam_point_streak_xg)
+```
+
+<<<<<<< HEAD
+=======
+```{r}
+#weighted ranking
+test$weightedminutes <- test$min_per_match / 90
+
+test$weighted_overall_rating <- test$weightedminutes * test$over
+
+print(test$weighted_overall_rating)
+```
+ 
+```{r}
+#grouping by position and average weighted ranking
+teams <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average)
+
+teams
+
+```
+
+```{r}
+#multinomial model
+expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
+summary(expect_model)
+
+predictions <- predict(expect_model, newdata = test_data_PL)
+
+library(scoring)
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- predict(expect_model, newdata = test_data_PL, type = "probs")  
+cbind(actual_outcomes, predicted_probs)
+
+library(yardstick)
+data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3)
+```
+
+```{r}
+predictions <- predict(init_logit_base_gam, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
+cbind(actual_outcomes_gams, predicted_probs_gams)
+
+data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3)
+
+```
+
+```{r}
+predictions <- predict(init_logit_gam, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
+cbind(actual_outcomes_gams, predicted_probs_gams)
+
+data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3)
+```
+
+```{r}
+predictions <- predict(init_logit_gam_xg, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
+cbind(actual_outcomes_gams, predicted_probs_gams)
+
+data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3)
+```
+
+```{r}
+#random forest model with brier score
+library(ranger)
+
+random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
+
+predictions <- predict(random_forest, data = test_data_PL)
+
+#Predicting the grier score
+rf_outcomes <- test_data_PL$Full_time_result_point 
+rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
+cbind(rf_outcomes, rf_probs)
+
+data.frame(
+  rf_outcomes,
+  rf_probs
+) %>% 
+  mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+  brier_class(rf_outcomes, X1:X3)
 ```
 
 
