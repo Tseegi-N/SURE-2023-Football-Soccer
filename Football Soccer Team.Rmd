@@ -19,7 +19,7 @@ library(nnet)
 ```
 
 ```{r}
-#fotmob data
+#fotmob matches data
 Comp <- FreeCompetitions()
 Matches <- FreeMatches(Comp)
 fotmob_matches <- fotmob_get_matches_by_date(date = c("20210925"))
@@ -129,7 +129,7 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
 
 ```{r}
-#mosiac plot to compare expected and actual win rate
+#mosaic plot to compare expected and actual win rate
 mosaicplot(table(bettingBasicPL2018$Full_time_result, bettingBasicPL2018$expect_win),
 shade = TRUE, main = "Relationship between expected win and actual win?")
 ```
@@ -158,49 +158,41 @@ test_y <- test_pl$result
 ```
 
 ```{r}
-one_nn_train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = 1, algorithm = "brute")
-mean(train_y == one_nn_train_preds)
-
-one_nn_train_preds <- knn(train = train_x, test = test_x, cl = train_y, k = 1, algorithm = "brute")
-mean(test_y == one_nn_train_preds)
-```
-
-```{r}
-errs_train <- rep(0, 12) 
-errs_test <- rep(0, 12) 
-k_vals <- 1:12 
-for(k in k_vals) {  
-  train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = k, algorithm = "brute") 
-  errs_train[k] <- mean(!train_y == train_preds)  
-  test_preds <- knn(train = train_x, test = test_x, cl = train_y, k = k, algorithm = "brute")  
-  errs_test[k] <- mean(!test_y == test_preds)
-}
+#errs_train <- rep(0, 12) 
+#errs_test <- rep(0, 12) 
+#k_vals <- 1:12 
+#for(k in k_vals) {  
+ # train_preds <- knn(train = train_x, test = train_x, cl = train_y, k = k, algorithm = "brute") 
+ # errs_train[k] <- mean(!train_y == train_preds)  
+  #test_preds <- knn(train = train_x, test = test_x, cl = train_y, k = k, algorithm = "brute")  
+ # errs_test[k] <- mean(!test_y == test_preds)
+#}
 ```
 
 
 ```{r}
-errors <- bind_cols(train_err = errs_train,                  
-                    test_err = errs_test,                   
-                    k = k_vals)
-errors %>%   pivot_longer(c(train_err, test_err),               
-                          names_to = "err_type") %>%   
-  ggplot(aes(x = k, y = value,             
-             color = err_type)) + 
-  geom_point() +  
-  geom_line() +  
-  labs(y = "Misclassification Rate",       
-       color = "Type of error") + 
-  theme_bw()
+# errors <- bind_cols(train_err = errs_train,                  
+#                     test_err = errs_test,                   
+#                     k = k_vals)
+# errors %>%   pivot_longer(c(train_err, test_err),               
+#                           names_to = "err_type") %>%   
+#   ggplot(aes(x = k, y = value,             
+#              color = err_type)) + 
+#   geom_point() +  
+#   geom_line() +  
+#   labs(y = "Misclassification Rate",       
+#        color = "Type of error") + 
+#   theme_bw()
 ```
 
 ```{r}
-knn_reg_mod <- nearest_neighbor(
-  mode = "classification",
-  engine = "kknn",
-  neighbors = 5,
-  weight_func = NULL,
-  dist_power = NULL
-)
+# knn_reg_mod <- nearest_neighbor(
+#   mode = "classification",
+#   engine = "kknn",
+#   neighbors = 5,
+#   weight_func = NULL,
+#   dist_power = NULL
+# )
 
 #result_knn <- knn_reg_mod %>% 
  # fit(result ~ Home_shots + home_ppg + home_team_possession, data= bettingBasicPL2018)
@@ -209,6 +201,7 @@ knn_reg_mod <- nearest_neighbor(
 ```
 
 ```{r}
+#possesion vs shots scatterplot
 ggplot(bettingBasicPL2018) +
   geom_point(aes(x = Home_shots,
                  y= home_team_possession,
@@ -228,6 +221,7 @@ ggplot(bettingBasicPL2018) +
 
 
 ```{r}
+#converting betting odds to percentages
 bettingBasicPL2018 <-  bettingBasicPL2018 %>% 
   mutate(expect_bet_H = 1/B365H,
          expect_bet_A = 1/B365A,
@@ -245,6 +239,7 @@ bettingBasicPL2018 <-  bettingBasicPL2018 %>%
 
 
 ```{r}
+#violin plot expected points
 bettingBasicPL2018 %>% 
   ggplot(aes(x = Full_time_result,
              y = expect_point_H)) +
@@ -254,7 +249,9 @@ bettingBasicPL2018 %>%
   
 ```
 
+
 ```{r}
+#HISTOGRAM OF DIFFERENT RESULTS
 bettingBasicPL2018 %>% 
   ggplot(aes(
              x = expect_point_H)) +
@@ -280,13 +277,10 @@ Fifa19 <- read_csv("players_19.csv")
 
 ArsChelFifa <- Fifa19 %>% 
   filter(club_name %in% c("Arsenal", "Chelsea"))
-
-
-
-
 ```
 
 ```{r}
+#matching names
 ArsChelFifa$short_name <- 
   stri_replace_all_regex(ArsChelFifa$short_name,
                          pattern = c("E. Hazard", "Kepa",
@@ -317,6 +311,7 @@ ArsChelFifa$short_name <-
 ```
 
 ```{r}
+#renaming 
 ArsChelFifa <- rename(ArsChelFifa, full_name = short_name)
 ```
 
@@ -332,6 +327,7 @@ ArsChelFifa <- ArsChelFifa %>%
 ```
 
 ```{r}
+#merging the fifa data
 ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
                             by = "full_name")
 
@@ -392,9 +388,9 @@ PL17_18 <- PL17_18 %>%
 
 
 ```{r warning = TRUE}
-#PL17_18 <- rename(PL17_18, Team = common_name)
-#crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
-#PL17_18 <- left_join(PL17_18, crests, by="Team")
+PL17_18 <- rename(PL17_18, Team = common_name)
+crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
+PL17_18 <- left_join(PL17_18, crests, by="Team")
 
 URL <- PL17_18$URL
 
@@ -430,10 +426,7 @@ Fifa19 <- Fifa19 %>%
      (Primary_position %in% c("LM","RM", "CM", "CAM", "CDM") ~ "Midfielder"),
      (Primary_position %in% c("LB","RB", "CB", "RWB", "LWB") ~ "Defender"),
     TRUE ~ "Goalkeeper"
-    
-    
   ))
-
 Fifa19$Primary_position
 ```
 
@@ -447,60 +440,20 @@ test <- merge(players_data,Fifa19,by=c("club_name","dob"))
 ```
 
 ```{r}
-mins_keans <- 
-  kmeans(dplyr::select(test, min_per_match, overall),
-         algorithm = "Lloyd", centers = 4,
-         nstart = 1)
-
-test  %>% 
-  mutate(minclusters =
-           as.factor(mins_keans$cluster)) %>% 
-  ggplot(aes(x = min_per_match, y = overall, color = minclusters )) +
-  geom_point() +
-  theme_bw()
+# #
+# mins_keans <- 
+#   kmeans(dplyr::select(test, min_per_match, overall),
+#          algorithm = "Lloyd", centers = 4,
+#          nstart = 1)
+# 
+# test  %>% 
+#   mutate(minclusters =
+#            as.factor(mins_keans$cluster)) %>% 
+#   ggplot(aes(x = min_per_match, y = overall, color = minclusters )) +
+#   geom_point() +
+#   theme_bw()
 ```
 
-
-
-
-```{r}
-
-total_average_minutes <- sum(test$min_per_match)
-weighted_minutes <- (test$min_per_match / total_average_minutes) * 90
-
-
-position_weights <- c("Forward" = 1.5, "Midfielder" = 1.2, "Defender" = 1, "Goalkeeper" = 0.8)
-
-
-test <- test %>%
-  mutate(weighted_players_minutes = weighted_minutes * position_weights[match(position, names(position_weights))])
-```
-
-```{r}
-
-min_weighted_minutes <- min(test$weighted_players_minutes)
-max_weighted_minutes <- max(test$weighted_players_minutes)
-
-
-position_rankings <- test %>%
-  group_by(club_name, position) %>%
-  summarize(total_weighted_minutes = sum(weighted_players_minutes))
-
-
-position_rankings <- position_rankings %>%
-  group_by(club_name) %>%
-  mutate(normalized_weighted_minutes = (total_weighted_minutes - min_weighted_minutes) /
-                                         (max_weighted_minutes - min_weighted_minutes) * 100)
-
-
-position_rankings <- position_rankings %>%
-  group_by(club_name) %>%
-  mutate(position_rank = rank(-normalized_weighted_minutes))
-
-
-print(position_rankings)
-
-```
 
 ```{r}
 #function to compute streak
@@ -661,6 +614,7 @@ summary(init_logit_gam_point_streak_xg)
 ```
 
 ```{r}
+#weighted ranking
 test$weightedminutes <- test$min_per_match / 90
 
 test$weighted_overall_rating <- test$weightedminutes * test$over
@@ -669,6 +623,7 @@ print(test$weighted_overall_rating)
 ```
  
 ```{r}
+#grouping by position and average weighted ranking
 teams <- test %>% 
   group_by(club_name, position) %>% 
   summarise(position_average = mean(weighted_overall_rating)) %>% 
@@ -679,6 +634,7 @@ teams
 ```
 
 ```{r}
+#multinomial model
 expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
 summary(expect_model)
 
@@ -749,6 +705,7 @@ data.frame(
 ```
 
 ```{r}
+#random forest model with brier score
 library(ranger)
 
 random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
