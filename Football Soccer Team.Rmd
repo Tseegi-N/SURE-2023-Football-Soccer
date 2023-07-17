@@ -343,13 +343,11 @@ chelsea_players <- ArsenalChelsea %>%
 arsenal_players <- ArsenalChelsea %>% 
   filter(club_name == "Arsenal") %>% 
   summarise(player_avg = mean(overall))
-<<<<<<< HEAD
+
 
 #linear model with player metrics
-expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
-summary(expect_model)
-=======
->>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
+# expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
+# summary(expect_model)
 ```
 
 
@@ -462,9 +460,6 @@ test <- merge(players_data,Fifa19,by=c("club_name","dob"))
 ```
 
 
-<<<<<<< HEAD
-
-
 ```{r}
 
 total_average_minutes <- sum(test$min_per_match)
@@ -505,10 +500,7 @@ print(position_rankings)
 
 ```
 
-=======
-=======
 ```{r}
->>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 #function to compute streak
 
 streak <- function(df, home, away, index){
@@ -583,7 +575,6 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 
 
 ```{r}
-<<<<<<< HEAD
 #set-up training data
 set.seed(907)
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
@@ -599,7 +590,6 @@ init_logit_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) + s(
 init_logit_base_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H),
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
-=======
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
 
@@ -623,7 +613,6 @@ init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_d
 init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
                            family = multinom(K = 2), 
                            data = train_data_PL)
->>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 ```
 
 ```{r}
@@ -667,12 +656,9 @@ bettingBasicPL2018 %>%
 ```
 
 ```{r}
-<<<<<<< HEAD
 #expected goals
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
-=======
->>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
 
 init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
                               + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
@@ -685,22 +671,16 @@ summary(init_logit_gam_xg)
 
 ```{r}
 #with all
-<<<<<<< HEAD
-init_logit_gam_point_streak_xg <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) 
-                      + s(streak_diff) + s(xg_diff),
-=======
 init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_point_H)
                       + s(streak_diff) + s(xg_diff), ~ s(expect_point_H)
                       + s(streak_diff) + s(xg_diff)),
->>>>>>> dedd02b34408d8e92de54a129b44a588b6561c7c
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
 
 summary(init_logit_gam_point_streak_xg)
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 #weighted ranking
 test$weightedminutes <- test$min_per_match / 90
