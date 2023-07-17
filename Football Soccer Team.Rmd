@@ -16,6 +16,14 @@ library(FNN)
 library(tidymodels)
 library(aod)
 library(nnet)
+library(ranger)
+library(readr)
+library(mgcv)
+library(nlme)
+library(yardstick)
+library(scoring)
+library(ggimage)
+library(readr)
 ```
 
 ```{r}
@@ -35,6 +43,12 @@ basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.c
 team_data <- read.csv("teams.csv")
 team_data_2 <- read.csv("teams2.csv")
 players_data <- read.csv("players.csv")
+
+# FIFA Data
+FIFA_players <- read.csv("players_18.csv")
+Fifa19 <- read_csv("players_19.csv")
+
+PL17_18 <- read_csv("england-premier-league-teams-2017-to-2018-stats (2).csv")
 ```
 
 
@@ -114,10 +128,6 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
          Home_shots_on_target = HST, Away_shots_on_target = AST ,Home_fouls = HF, 
          Home_cards =  HC,Away_cards = AC, Home_yellows = HY, Away_yellows = AY , 
          Home_reds = HR, Away_reds = AR, Full_time_result = FTR, Half_time_result = HTR)
-
-# FIFA Data
-
-FIFA_players <- read.csv("players_18.csv")
 ```
 
 
@@ -214,8 +224,6 @@ ggplot(bettingBasicPL2018) +
 
 
 ```{r}
-
-
   #firstlm <- glm(as.factor(Full_time_result) ~ Home_shots + home_ppg + home_team_possession, family = "poisson", data= bettingBasicPL2018)
 ```
 
@@ -272,9 +280,6 @@ Ars_Che_2019Jan
 ```
 
 ```{r}
-library(readr)
-Fifa19 <- read_csv("players_19.csv")
-
 ArsChelFifa <- Fifa19 %>% 
   filter(club_name %in% c("Arsenal", "Chelsea"))
 ```
@@ -330,8 +335,6 @@ ArsChelFifa <- ArsChelFifa %>%
 #merging the fifa data
 ArsenalChelsea <- left_join(ArsChelFifa, Ars_Che_2019Jan, 
                             by = "full_name")
-
-
 ```
 
 ```{r}
@@ -343,17 +346,6 @@ chelsea_players <- ArsenalChelsea %>%
 arsenal_players <- ArsenalChelsea %>% 
   filter(club_name == "Arsenal") %>% 
   summarise(player_avg = mean(overall))
-
-
-#linear model with player metrics
-# expect_player_model <- multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = bettingBasicPL2018)
-# summary(expect_model)
-```
-
-
-```{r}
-library(readr)
-PL17_18 <- read_csv("england-premier-league-teams-2017-to-2018-stats (2).csv")
 ```
 
 ```{r}
@@ -399,7 +391,6 @@ PL17_18 <- left_join(PL17_18, crests, by="Team")
 
 URL <- PL17_18$URL
 
-library(ggimage)
 ggplot(PL17_18, 
   aes(x=points_per_game_home, y=points_per_game_away, label=team_name)) + 
   geom_vline(xintercept = 0) + 
@@ -420,8 +411,6 @@ Fifa19 <- Fifa19 %>%
 Fifa19[c("Primary_position", "Secondary")] <- str_split_fixed(Fifa19$player_positions, ',',2)
 
 Fifa19$Primary_position
-
-
 ```
 
 ```{r}
@@ -461,58 +450,15 @@ test <- merge(players_data,Fifa19,by=c("club_name","dob"))
 
 
 ```{r}
-
-total_average_minutes <- sum(test$min_per_match)
-weighted_minutes <- (test$min_per_match / total_average_minutes) * 90
-
-
-position_weights <- c("Forward" = 1.5, "Midfielder" = 1.2, "Defender" = 1, "Goalkeeper" = 0.8)
-
-
-test <- test %>%
-  mutate(weighted_players_minutes = weighted_minutes * position_weights[match(position, names(position_weights))])
-```
-
-```{r}
-
-
-min_weighted_minutes <- min(test$weighted_players_minutes)
-max_weighted_minutes <- max(test$weighted_players_minutes)
-
-
-position_rankings <- test %>%
-  group_by(club_name, position) %>%
-  summarize(total_weighted_minutes = sum(weighted_players_minutes))
-
-
-position_rankings <- position_rankings %>%
-  group_by(club_name) %>%
-  mutate(normalized_weighted_minutes = (total_weighted_minutes - min_weighted_minutes) /
-                                         (max_weighted_minutes - min_weighted_minutes) * 100)
-
-
-position_rankings <- position_rankings %>%
-  group_by(club_name) %>%
-  mutate(position_rank = rank(-normalized_weighted_minutes))
-
-
-print(position_rankings)
-
-```
-
-```{r}
 #function to compute streak
-
 streak <- function(df, home, away, index){
-
   streak_data <- df[1:(index-1),] %>% 
     filter((HomeTeam %in% c(home, away) | AwayTeam %in% c(home, away)))
 
   n_rows <- nrow(streak_data)
   streak_data <- streak_data[max(1,n_rows-9):n_rows,]
-  
-  
   streak_data <- streak_data %>% 
+ 
     mutate(
     opposing_team = ifelse(HomeTeam %in% c(home, away), AwayTeam, HomeTeam),
     team = ifelse(HomeTeam %in% c(home, away), HomeTeam, AwayTeam),
@@ -523,31 +469,28 @@ streak <- function(df, home, away, index){
                            "Everton") ~ 1.25,
       opposing_team %in% c("Westham United", "Crystal Palace", "Brighton & Hove Albion", 
                            "AFC Bournemouth", "Watford") ~ 0.75,
-      TRUE ~ 0.5
-    ),
-     Home_away = ifelse(HomeTeam %in% c(home, away), "H", "A"),
-    win = case_when(
-      ((Home_away == "H" & Full_time_result == "H") | (Home_away == "A" & Full_time_result == "A")) ~ 1,
-      (Full_time_result == "D") ~ 0,
-      TRUE ~ (-1)
-    )
-  )
+      TRUE ~ 0.5),
+    Home_away = ifelse(HomeTeam %in% c(home, away), "H", "A"),
+    win = case_when(((Home_away == "H" & Full_time_result == "H") | 
+                       (Home_away == "A" & Full_time_result == "A")) ~ 1,
+                    (Full_time_result == "D") ~ 0, TRUE ~ (-1)))
   
-   home_streak <- streak_data %>% 
-     filter(team == home) %>% 
-     mutate(weighted_streak = weighted_points * win) %>% 
-     summarize(streak = sum(weighted_streak))
-  
-    away_streak <- streak_data %>% 
-      filter(team == away) %>% 
-      mutate(weighted_streak = weighted_points * win) %>% 
-      summarize(streak = sum(weighted_streak))
-    
-    streak <- paste(c(home_streak, away_streak))
-  
-    return(streak)
+  home_streak <- streak_data %>% 
+    filter(team == home) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  away_streak <- streak_data %>% 
+    filter(team == away) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  streak <- paste(c(home_streak, away_streak))
+ 
+  return(streak)
 }
 ```
+ 
 
 ```{r}
 #compute on one instance
@@ -558,10 +501,12 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>% mutate(streak_h = NA, streak_a = NA
 for(i in 1:nrow(bettingBasicPL2018)) {
   streak_score <- streak(bettingBasicPL2018, bettingBasicPL2018$HomeTeam[i],
                          bettingBasicPL2018$AwayTeam[i], i)
+
   bettingBasicPL2018$streak_h[i] <- streak_score[1]
   bettingBasicPL2018$streak_a[i] <- streak_score[2]
 } 
 ```
+ 
 
 ```{r}
 #compute streak diff
@@ -572,24 +517,8 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 bettingBasicPL2018 <- bettingBasicPL2018 %>%
   mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
 ```
-
-
+ 
 ```{r}
-#set-up training data
-set.seed(907)
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  mutate(is_train = sample(rep(0:1, length.out = nrow(bettingBasicPL2018))))
-
-#set-up models
-library(mgcv)
-library(nlme)
-init_logit_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H) + s(streak_diff),
-                      data = filter(bettingBasicPL2018, is_train == 1),
-                      family = binomial, method = "REML")
-
-init_logit_base_gam <- gam(as.factor(Full_time_result_point) ~ s(expect_point_H),
-                      data = filter(bettingBasicPL2018, is_train == 1),
-                      family = binomial, method = "REML")
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
 
@@ -603,8 +532,6 @@ test_data_PL <- bettingBasicPL2018 %>%
  
 head(bettingBasicPL2018$Full_time_result_num) 
 #set-up models
-library(mgcv)
-library(nlme)
 init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
                            ~s(expect_point_H) + s(streak_diff)),
                       data = filter(train_data_PL),
@@ -614,13 +541,13 @@ init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(exp
                            family = multinom(K = 2), 
                            data = train_data_PL)
 ```
-
+ 
 ```{r}
 #check for summary
 summary(init_logit_gam)
 summary(init_logit_base_gam)
 ```
-
+ 
 ```{r}
 gam.check(init_logit_gam)
 ```
@@ -628,38 +555,23 @@ gam.check(init_logit_gam)
 ```{r}
 gam.check(init_logit_base_gam)
 ```
-
-```{r}
-#check fot fitness of a model
-bettingBasicPL2018 <- bettingBasicPL2018 %>%
-  mutate(init_gam_result_prob = as.numeric(predict(init_logit_gam,
-                                                   newdata = bettingBasicPL2018,
-                                                   type = "response")),
-         init_gam_result_class = as.numeric(init_gam_result_prob >= 0.5))
-
-bettingBasicPL2018 %>%
-  group_by(is_train) %>%
-  summarize(correct = mean(init_gam_result_class))
-```
-
+ 
+ 
 ```{r}
 #fitness of a model
 bettingBasicPL2018 <- bettingBasicPL2018 %>%
   mutate(init_gam_result_base_prob = as.numeric(predict(init_logit_base_gam,
-                                                   newdata = bettingBasicPL2018,
-                                                   type = "response")),
+                                                        newdata = bettingBasicPL2018,
+                                                        type = "response")),
          init_gam_result_base_class = as.numeric(init_gam_result_base_prob >= 0.5))
-
+ 
 bettingBasicPL2018 %>%
   group_by(is_train) %>%
   summarize(correct = mean(init_gam_result_base_class))
 ```
+ 
 
 ```{r}
-#expected goals
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
-
 init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
                               + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
                               + s(xg_diff)),
@@ -668,6 +580,7 @@ init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(strea
 
 summary(init_logit_gam_xg)
 ```
+ 
 
 ```{r}
 #with all
@@ -676,10 +589,8 @@ init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_poi
                       + s(streak_diff) + s(xg_diff)),
                       data = filter(bettingBasicPL2018, is_train == 1),
                       family = binomial, method = "REML")
-
 summary(init_logit_gam_point_streak_xg)
 ```
-
 
 ```{r}
 #weighted ranking
@@ -708,13 +619,11 @@ summary(expect_model)
 
 predictions <- predict(expect_model, newdata = test_data_PL)
 
-library(scoring)
 #Predicting the grier score
 actual_outcomes <- test_data_PL$Full_time_result_point 
 predicted_probs <- predict(expect_model, newdata = test_data_PL, type = "probs")  
 cbind(actual_outcomes, predicted_probs)
 
-library(yardstick)
 data.frame(
   actual_outcomes,
   predicted_probs
@@ -774,8 +683,6 @@ data.frame(
 
 ```{r}
 #random forest model with brier score
-library(ranger)
-
 random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
 
 predictions <- predict(random_forest, data = test_data_PL)
@@ -792,5 +699,4 @@ data.frame(
   mutate(rf_outcomes = factor(rf_outcomes)) %>% 
   brier_class(rf_outcomes, X1:X3)
 ```
-
 
