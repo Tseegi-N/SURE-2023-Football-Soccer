@@ -429,7 +429,8 @@ players_data$birthday_GMT <- format(as.Date(players_data$birthday_GMT), "%d/%m/%
 Fifa19$dob <-format(as.Date(Fifa19$dob,format="%d/%m/%Y"),"%d/%m/%Y")
 players_data$dob <- players_data$birthday_GMT
 players_data$club_name <- players_data$Current.Club
-test <- merge(players_data,Fifa19,by=c("club_name","dob"))
+Fifa19[Fifa19== "Bournemouth"] <- "AFC Bournemouth"
+test <-merge(players_data,Fifa19,by=c("club_name","dob"))
 
 ```
 
@@ -606,9 +607,17 @@ print(test$weighted_overall_rating)
 teams <- test %>% 
   group_by(club_name, position) %>% 
   summarise(position_average = mean(weighted_overall_rating)) %>% 
-  select(club_name, position, position_average)
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  summarise(team_sum = sum(position_average)) 
 
-teams
+
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(difference_added_avg_pos = team_sum.x - team_sum.y) 
 
 ```
 
@@ -631,6 +640,7 @@ data.frame(
   mutate(actual_outcomes = factor(actual_outcomes)) %>% 
   brier_class(actual_outcomes, X0:X3)
 ```
+
 
 ```{r}
 predictions <- predict(init_logit_base_gam, newdata = test_data_PL)
