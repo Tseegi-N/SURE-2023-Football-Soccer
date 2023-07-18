@@ -639,7 +639,6 @@ data.frame(
 ) %>% 
   mutate(actual_outcomes = factor(actual_outcomes)) %>% 
   brier_class(actual_outcomes, X0:X3)
-
 ```
 
 
