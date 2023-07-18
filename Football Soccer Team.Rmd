@@ -735,3 +735,22 @@ data.frame(
   brier_class(rf_outcomes, X1:X3)
 ```
 
+```{r}
+predicted_probs <- as.data.frame(predict(init_logit_gam_xg, newdata = test_data_PL, type = "probs"))
+
+# This is the data frame
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>% 
+  filter(value >= 0.5)
+
+#Dot plot  
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  ggplot(aes(x = value, y = actual_outcomes, col = name))+
+  geom_point() +
+  facet_wrap(~ name) +
+  geom_smooth() 
+```
+
