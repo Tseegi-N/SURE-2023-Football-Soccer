@@ -557,20 +557,6 @@ gam.check(init_logit_gam)
 gam.check(init_logit_base_gam)
 ```
  
- 
-```{r}
-#fitness of a model
-bettingBasicPL2018 <- bettingBasicPL2018 %>%
-  mutate(init_gam_result_base_prob = as.numeric(predict(init_logit_base_gam,
-                                                        newdata = bettingBasicPL2018,
-                                                        type = "response")),
-         init_gam_result_base_class = as.numeric(init_gam_result_base_prob >= 0.5))
- 
-bettingBasicPL2018 %>%
-  group_by(is_train) %>%
-  summarize(correct = mean(init_gam_result_base_class))
-```
- 
 
 ```{r}
 init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
@@ -581,25 +567,13 @@ init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(strea
 
 summary(init_logit_gam_xg)
 ```
- 
 
-```{r}
-#with all
-init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_point_H)
-                      + s(streak_diff) + s(xg_diff), ~ s(expect_point_H)
-                      + s(streak_diff) + s(xg_diff)),
-                      data = filter(bettingBasicPL2018, is_train == 1),
-                      family = binomial, method = "REML")
-summary(init_logit_gam_point_streak_xg)
-```
 
 ```{r}
 #weighted ranking
 test$weightedminutes <- test$min_per_match / 90
 
 test$weighted_overall_rating <- test$weightedminutes * test$over
-
-print(test$weighted_overall_rating)
 ```
  
 ```{r}
@@ -622,6 +596,9 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
 
 ```{r}
+#brier score dataframe 
+brier_score <- data.frame(matrix(nrow = 1))
+
 #multinomial model
 expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
 summary(expect_model)
@@ -633,12 +610,16 @@ actual_outcomes <- test_data_PL$Full_time_result_point
 predicted_probs <- predict(expect_model, newdata = test_data_PL, type = "probs")  
 cbind(actual_outcomes, predicted_probs)
 
-data.frame(
+brier_score['multinomial_base'] = data.frame(
   actual_outcomes,
   predicted_probs
 ) %>% 
   mutate(actual_outcomes = factor(actual_outcomes)) %>% 
-  brier_class(actual_outcomes, X0:X3)
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+brier_score <-brier_score[-c(1)] 
+row.names(brier_score)[1] <- "brier score"
 ```
 
 
@@ -650,12 +631,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['init_logit_base_gam'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 
 ```
 
@@ -667,12 +649,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['init_logit_gam_streak'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -683,12 +666,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['init_logit_gam_xg'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -701,12 +685,17 @@ predictions <- predict(random_forest, data = test_data_PL)
 rf_outcomes <- test_data_PL$Full_time_result_point 
 rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
 cbind(rf_outcomes, rf_probs)
-
-data.frame(
+  
+brier_score['randForest_streak'] = data.frame(
   rf_outcomes,
   rf_probs
 ) %>% 
   mutate(rf_outcomes = factor(rf_outcomes)) %>% 
-  brier_class(rf_outcomes, X1:X3)
+  brier_class(rf_outcomes, X1:X3) %>% 
+  select(.estimate)
+```
+
+```{r}
+
 ```
 
