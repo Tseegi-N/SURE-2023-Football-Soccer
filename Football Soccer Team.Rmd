@@ -630,8 +630,37 @@ predictions <- predict(expect_model, newdata = test_data_PL)
 
 #Predicting the grier score
 actual_outcomes <- test_data_PL$Full_time_result_point 
-predicted_probs <- predict(expect_model, newdata = test_data_PL, type = "probs")  
-cbind(actual_outcomes, predicted_probs)
+predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+# This is the data frame
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>% 
+  filter(value >= 0.5)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+#Dot plot  
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  ggplot(aes(x = value, y = actual_outcomes, col = name))+
+  geom_point() +
+  facet_wrap(~ name) +
+  geom_smooth() +
+  geom_jitter()
+
+
+base_data_frame %>%
+  ggplot(aes(x = actual_outcomes, y = predicted_probs)) +
+  geom_point()
 
 data.frame(
   actual_outcomes,
