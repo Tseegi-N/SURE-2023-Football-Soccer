@@ -657,11 +657,7 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
   geom_smooth() +
   geom_jitter()
 
-
-base_data_frame %>%
-  ggplot(aes(x = actual_outcomes, y = predicted_probs)) +
-  geom_point()
-
+#Brier Score
 data.frame(
   actual_outcomes,
   predicted_probs
