@@ -557,20 +557,6 @@ gam.check(init_logit_gam)
 gam.check(init_logit_base_gam)
 ```
  
- 
-```{r}
-#fitness of a model
-bettingBasicPL2018 <- bettingBasicPL2018 %>%
-  mutate(init_gam_result_base_prob = as.numeric(predict(init_logit_base_gam,
-                                                        newdata = bettingBasicPL2018,
-                                                        type = "response")),
-         init_gam_result_base_class = as.numeric(init_gam_result_base_prob >= 0.5))
- 
-bettingBasicPL2018 %>%
-  group_by(is_train) %>%
-  summarize(correct = mean(init_gam_result_base_class))
-```
- 
 
 ```{r}
 init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
@@ -580,17 +566,6 @@ init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(strea
                       family = multinom(K = 2))
 
 summary(init_logit_gam_xg)
-```
- 
-
-```{r}
-#with all
-init_logit_gam_point_streak_xg <- gam(list(Full_time_result_point ~ s(expect_point_H)
-                      + s(streak_diff) + s(xg_diff), ~ s(expect_point_H)
-                      + s(streak_diff) + s(xg_diff)),
-                      data = filter(bettingBasicPL2018, is_train == 1),
-                      family = binomial, method = "REML")
-summary(init_logit_gam_point_streak_xg)
 ```
 
 ```{r}
@@ -622,6 +597,9 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
 
 ```{r}
+#brier score dataframe 
+brier_score <- data.frame(matrix(nrow = 1))
+
 #multinomial model
 expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
 summary(expect_model)
@@ -658,12 +636,16 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
   geom_jitter()
 
 #Brier Score
-data.frame(
+brier_score['multinomial base'] = data.frame(
   actual_outcomes,
   predicted_probs
 ) %>% 
   mutate(actual_outcomes = factor(actual_outcomes)) %>% 
-  brier_class(actual_outcomes, X0:X3)
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+brier_score <-brier_score[-c(1)] 
+row.names(brier_score)[1] <- "brier score"
 ```
 
 
@@ -675,13 +657,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['base GAMs'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
-
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -692,12 +674,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['streak GAMs'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -708,12 +691,13 @@ actual_outcomes_gams <- test_data_PL$Full_time_result_point
 predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
 cbind(actual_outcomes_gams, predicted_probs_gams)
 
-data.frame(
+brier_score['streak xg GAMs'] = data.frame(
   actual_outcomes_gams,
   predicted_probs_gams
 ) %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
-  brier_class(actual_outcomes_gams, X1:X3)
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -727,12 +711,13 @@ rf_outcomes <- test_data_PL$Full_time_result_point
 rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
 cbind(rf_outcomes, rf_probs)
 
-data.frame(
+brier_score['rand forest base'] = data.frame(
   rf_outcomes,
   rf_probs
 ) %>% 
   mutate(rf_outcomes = factor(rf_outcomes)) %>% 
-  brier_class(rf_outcomes, X1:X3)
+  brier_class(rf_outcomes, X1:X3) %>% 
+  select(.estimate)
 ```
 
 ```{r}
@@ -752,5 +737,52 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
   geom_point() +
   facet_wrap(~ name) +
   geom_smooth() 
+```
+```{r}
+#MSE for GAMs
+predicted_probs <- as.data.frame(predict(init_logit_gam, newdata = test_data_PL, type = "probs"))
+draw <- base_data_frame %>% 
+  filter(actual_outcomes == 1) %>% 
+  nrow()
+loss <- base_data_frame %>% 
+  filter(actual_outcomes == 0) %>% 
+  nrow()
+win <- base_data_frame %>% 
+  filter(actual_outcomes == 3) %>% 
+  nrow()
+
+# This is the data frame
+gam_streak_data_frame <- base_data_frame%>% 
+  rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  mutate(predicted_result = case_when((prob_losing > prob_draw) & (prob_losing > prob_win) ~ 0,
+                                      (prob_draw > prob_losing) & (prob_draw > prob_win) ~ 1,
+                                      TRUE ~ 2),
+         actual_outcomes_num = case_when(actual_outcomes == 3 ~ 2, .default = actual_outcomes),
+         residual = (actual_outcomes - predicted_result)) %>% 
+  pivot_wider(names_from = actual_outcomes_num, values_from = predicted_result) %>% 
+  rename(actual_loss = '0', actual_draw = '1', actual_win = '2') %>%
+  mutate(mse_loss = sum((0-actual_loss)^2, na.rm = TRUE)/loss,
+         mse_draw = sum((1-actual_draw)^2, na.rm = TRUE)/draw,
+         mse_win = sum((2-actual_win)^2, na.rm = TRUE)/win)
+```
+
+```{r}
+#offense and defense rating
+teams_rating <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  pivot_wider(names_from = position, values_from = position_average) %>% 
+  mutate(defense_rate = (Defender +Goalkeeper)/200,
+         offense_rate = (Forward + Midfielder)/200) %>% 
+  select(club_name, defense_rate, offense_rate)
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams_rating, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams_rating, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(pos_rating_regression = (team_a_xg + defense_rate.x + offense_rate.x) - (team_b_xg + defense_rate.y + offense_rate.y)) 
 ```
 
