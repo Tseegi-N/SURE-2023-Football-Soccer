@@ -635,6 +635,20 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
   geom_smooth() +
   geom_jitter()
 
+# Box plot
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+ggplot(aes(x = name, y = value, fill = factor(actual_outcomes))) +
+  geom_boxplot() +
+  labs(title = "Predicted Probabilities of Match Outcomes",
+       x = "Observations",
+       y = "Predicted Probability",
+       fill = "Actual Outcomes") +
+  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5"),
+                    labels = c("Lose", "Draw", "Win")) +
+  theme_minimal() 
+
 #Brier Score
 brier_score['multinomial base'] = data.frame(
   actual_outcomes,
