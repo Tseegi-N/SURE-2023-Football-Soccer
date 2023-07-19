@@ -800,3 +800,66 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
   mutate(pos_rating_regression = (team_a_xg + defense_rate.x + offense_rate.x) - (team_b_xg + defense_rate.y + offense_rate.y)) 
 ```
 
+```{r}
+predictions_gam <- predict(init_logit_gam, test_data_PL, type = "response")
+
+predicted_class <- max.col(predictions_gam)
+
+table(predicted_class, test_data_PL$Full_time_result_num)
+
+#Accuracy for multinomial model
+predicted_labels_mn <- predict(expect_model, newdata = test_data_PL, type = "class")
+
+true_labels <- test_data_PL$Full_time_result_point
+
+accuracy_multinom <- sum(predicted_labels == true_labels) / length(true_labels)
+
+cat("Accuracy:", accuracy_multinom, "\n")
+```
+```{r}
+rf_labels <- test_data_PL$Full_time_result_num
+
+
+rf_predicted_labels <- apply(predictions$predictions, 1, which.max) - 1
+
+#confusion matrix
+conf_matrix <- table(Actual = rf_labels, Predicted = rf_predicted_labels)
+
+# Print the confusion matrix
+print(conf_matrix)
+
+# Calculate overall accuracy
+overall_accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Overall Accuracy:", overall_accuracy))
+
+predicted_labels_gamxg <- max.col(predicted_probs)
+
+# Calculate accuracy
+accuracy_gamsxg <- sum(predicted_labels_gamxg == true_labels) / length(true_labels)
+
+# Print the accuracy
+cat("Accuracy XG:", accuracy_gamsxg, "\n")
+
+
+predicted_labels_gam <- max.col(predicted_probs_gams_base)
+```
+```{r}
+#Accuracy and brier score table
+
+model_names <- c("Random Forest", "Base gams model", "Gams Model xG", "Multinomial")  
+accuracies <- c(accuracy_rf,accuracy_gams_base, accuracy_gams, accuracy_multinom)  
+brier_scores <- c(0.4418142, 0.25744, 0.2648771, 0.2591487)
+
+
+
+model_comparison <- data.frame(Model = model_names, Accuracy = accuracies, Brier_Score = brier_scores)
+
+# Load the required libraries
+library(knitr)
+library(kableExtra)
+
+# Display the model comparison table using kable
+kable_styling(kable(model_comparison, caption = "Model Comparison"), font_size = 14,  bootstrap_options = c("striped", "hover", "condensed")) 
+
+```
+
