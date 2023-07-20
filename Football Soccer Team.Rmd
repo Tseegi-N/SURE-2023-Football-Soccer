@@ -719,7 +719,7 @@ brier_score['streak xg GAMs'] = data.frame(
 ```
 
 ```{r}
-#random forest model with brier score
+#random forest model with streak and XGs
 random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
 
 rf_predictions <- predict(random_forest, data = test_data_PL)
@@ -727,9 +727,8 @@ rf_predictions <- predict(random_forest, data = test_data_PL)
 #Predicting the grier score
 rf_outcomes <- test_data_PL$Full_time_result_point 
 rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
-cbind(rf_outcomes, rf_probs)
 
-brier_score['rand forest base'] = data.frame(
+brier_score['rand forest streak Xg'] = data.frame(
   rf_outcomes,
   rf_probs
 ) %>% 
@@ -756,6 +755,7 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
   facet_wrap(~ name) +
   geom_smooth() 
 ```
+
 ```{r}
 #MSE for GAMs
 #mistake in computing dataframe
@@ -810,6 +810,7 @@ accuracy_gams_base <- sum(predicted_labels_gam == true_labels) / length(true_lab
 cat("Accuracy base:", accuracy_gams_base, "\n")
 
 ```
+
 ```{r}
 rf_labels <- test_data_PL$Full_time_result_num
 
@@ -836,6 +837,7 @@ cat("Accuracy XG:", accuracy_gamsxg, "\n")
 
 
 ```
+
 ```{r}
 #Accuracy and brier score table
 
@@ -855,6 +857,7 @@ library(kableExtra)
 kable_styling(kable(model_comparison, caption = "Model Comparison"), font_size = 14,  bootstrap_options = c("striped", "hover", "condensed")) 
 
 ```
+
 ```{r}
 #multinom with position regression
 multinom_pos_reg <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression, data = train_data_PL)
@@ -922,5 +925,160 @@ gams_dataframe_predict %>%
   ggplot(aes(x = value, fill = name))+
   geom_histogram(bins = 10, position = "dodge") +
   facet_wrap(~ actual_outcomes_gams)
+```
+
+```{r}
+#multinom with position and betting
+multinom_betting_pos <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H, data = train_data_PL)
+
+predictions <- predict(multinom_betting_pos, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+
+#Brier Score
+brier_score['multinomial betting pos'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+```
+```{r}
+#multinom with position and betting
+multinom_betting_pos_streak <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff, data = train_data_PL)
+
+predictions <- predict(multinom_betting_pos_streak, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_betting_pos_streak, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+
+#Brier Score
+brier_score['multinomial betting pos streak'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+```
+```{r}
+#multinom with position and betting
+multinom_full <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff + xg_diff, data = train_data_PL)
+
+predictions <- predict(multinom_full, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_full, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+
+#Brier Score
+brier_score['multinomial full'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+```
+```{r}
+#random forest model with brier score
+random_forest_pos <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff + pos_rating_regression, data = train_data_PL, probability = TRUE)
+
+rfp_predictions <- predict(random_forest_pos, data = test_data_PL)
+
+#Predicting the grier score
+rfp_outcomes <- test_data_PL$Full_time_result_point 
+rfp_probs <- predict(random_forest_pos, data = test_data_PL, type = "response")  
+
+brier_score['rand forest pos'] = data.frame(
+  rfp_outcomes,
+  rfp_probs
+) %>% 
+  mutate(rfp_outcomes = factor(rfp_outcomes)) %>% 
+  brier_class(rfp_outcomes, X1:X3) %>% 
+  select(.estimate)
+```
+```{r}
+#full gams model
+init_logit_gam_full <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression), 
+                            ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression)),
+                      data = train_data_PL,
+                      family = multinom(K = 2))
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_full, newdata = test_data_PL, type = "response")  
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+brier_score['Full GAMs'] =  gams_dataframe_predict %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+#This is the data frame
+gams_dataframe_predict <- gams_dataframe_predict %>% 
+  rename(prob_losing = 'X1', prob_draw = 'X2', prob_win = 'X3') %>% 
+  pivot_longer(cols = starts_with('prob'))
+
+#Histogram
+gams_dataframe_predict %>% 
+  filter(value >=0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes_gams)
+```
+```{r}
+#random forest model with brier score
+random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train_data_PL, probability = TRUE)
+
+#Predicting the grier score
+rf_outcomes <- test_data_PL$Full_time_result_point 
+rf_probs <- predict(random_forest_base, data = test_data_PL, type = "response")  
+
+brier_score['rand forest base'] = data.frame(
+  rf_outcomes,
+  rf_probs
+) %>% 
+  mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+  brier_class(rf_outcomes, X1:X3) %>% 
+  select(.estimate)
+
+brier_score <- data.frame(t(brier_score))
 ```
 
