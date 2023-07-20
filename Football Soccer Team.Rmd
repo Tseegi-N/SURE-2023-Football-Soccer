@@ -998,6 +998,8 @@ brier_score['multinomial betting pos'] = data.frame(
   brier_class(actual_outcomes, X0:X3) %>% 
   select(.estimate)
 ```
+
+
 ```{r}
 #multinom with position and betting
 multinom_betting_pos_streak <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff, data = train_data_PL)
@@ -1027,6 +1029,8 @@ brier_score['multinomial betting pos streak'] = data.frame(
   brier_class(actual_outcomes, X0:X3) %>% 
   select(.estimate)
 ```
+
+
 ```{r}
 #multinom with position and betting
 multinom_full <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff + xg_diff, data = train_data_PL)
@@ -1056,6 +1060,8 @@ brier_score['multinomial full'] = data.frame(
   brier_class(actual_outcomes, X0:X3) %>% 
   select(.estimate)
 ```
+
+
 ```{r}
 #random forest model with brier score
 random_forest_pos <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff + pos_rating_regression, data = train_data_PL, probability = TRUE)
