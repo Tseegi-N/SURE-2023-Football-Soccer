@@ -221,8 +221,6 @@ ggplot(bettingBasicPL2018) +
   theme_bw()
 
 ```
-
-
 ```{r}
   #firstlm <- glm(as.factor(Full_time_result) ~ Home_shots + home_ppg + home_team_possession, family = "poisson", data= bettingBasicPL2018)
 ```
@@ -409,8 +407,6 @@ Fifa19 <- Fifa19 %>%
 
 ```{r}
 Fifa19[c("Primary_position", "Secondary")] <- str_split_fixed(Fifa19$player_positions, ',',2)
-
-Fifa19$Primary_position
 ```
 
 ```{r}
@@ -421,7 +417,6 @@ Fifa19 <- Fifa19 %>%
      (Primary_position %in% c("LB","RB", "CB", "RWB", "LWB") ~ "Defender"),
     TRUE ~ "Goalkeeper"
   ))
-Fifa19$Primary_position
 ```
 
 ```{r}
@@ -520,8 +515,47 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
 ```
  
 ```{r}
+#weighted ranking
+test$weightedminutes <- test$min_per_match / 90
+
+test$weighted_overall_rating <- test$weightedminutes * test$over
+
+print(test$weighted_overall_rating)
+
+#change winning number for model
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
+
+#grouping by position and average weighted ranking
+teams <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  summarise(team_sum = sum(position_average)) 
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(difference_added_avg_pos = team_sum.x - team_sum.y) 
+
+#offense and defense rating
+teams_rating <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  pivot_wider(names_from = position, values_from = position_average) %>% 
+  mutate(defense_rate = (Defender +Goalkeeper)/200,
+         offense_rate = (Forward + Midfielder)/200) %>% 
+  select(club_name, defense_rate, offense_rate)
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams_rating, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams_rating, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(pos_rating_regression = (team_a_xg + defense_rate.x + offense_rate.x) - (team_b_xg + defense_rate.y + offense_rate.y)) 
 
 #set-up training data
 train_data_PL <- bettingBasicPL2018 %>% 
@@ -530,8 +564,6 @@ train_data_PL <- bettingBasicPL2018 %>%
 test_data_PL <- bettingBasicPL2018 %>% 
   filter(month %in% 2:5)
 
- 
-head(bettingBasicPL2018$Full_time_result_num) 
 #set-up models
 init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
                            ~s(expect_point_H) + s(streak_diff)),
@@ -566,34 +598,6 @@ init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(strea
                       family = multinom(K = 2))
 
 summary(init_logit_gam_xg)
-```
-
-```{r}
-#weighted ranking
-test$weightedminutes <- test$min_per_match / 90
-
-test$weighted_overall_rating <- test$weightedminutes * test$over
-
-print(test$weighted_overall_rating)
-```
- 
-```{r}
-#grouping by position and average weighted ranking
-teams <- test %>% 
-  group_by(club_name, position) %>% 
-  summarise(position_average = mean(weighted_overall_rating)) %>% 
-  select(club_name, position, position_average) %>% 
-  ungroup() %>% 
-  group_by(club_name) %>% 
-  summarise(team_sum = sum(position_average)) 
-
-
-
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  left_join(teams, by = c("HomeTeam" = "club_name")) %>%
-  left_join(teams, by = c("AwayTeam" = "club_name")) %>%  
-  mutate(difference_added_avg_pos = team_sum.x - team_sum.y) 
-
 ```
 
 ```{r}
@@ -754,6 +758,7 @@ base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %
 ```
 ```{r}
 #MSE for GAMs
+#mistake in computing dataframe
 predicted_probs <- as.data.frame(predict(init_logit_gam, newdata = test_data_PL, type = "probs"))
 draw <- base_data_frame %>% 
   filter(actual_outcomes == 1) %>% 
@@ -779,25 +784,6 @@ gam_streak_data_frame <- base_data_frame%>%
   mutate(mse_loss = sum((0-actual_loss)^2, na.rm = TRUE)/loss,
          mse_draw = sum((1-actual_draw)^2, na.rm = TRUE)/draw,
          mse_win = sum((2-actual_win)^2, na.rm = TRUE)/win)
-```
-
-```{r}
-#offense and defense rating
-teams_rating <- test %>% 
-  group_by(club_name, position) %>% 
-  summarise(position_average = mean(weighted_overall_rating)) %>% 
-  select(club_name, position, position_average) %>% 
-  ungroup() %>% 
-  group_by(club_name) %>% 
-  pivot_wider(names_from = position, values_from = position_average) %>% 
-  mutate(defense_rate = (Defender +Goalkeeper)/200,
-         offense_rate = (Forward + Midfielder)/200) %>% 
-  select(club_name, defense_rate, offense_rate)
-
-bettingBasicPL2018 <- bettingBasicPL2018 %>% 
-  left_join(teams_rating, by = c("HomeTeam" = "club_name")) %>%
-  left_join(teams_rating, by = c("AwayTeam" = "club_name")) %>%  
-  mutate(pos_rating_regression = (team_a_xg + defense_rate.x + offense_rate.x) - (team_b_xg + defense_rate.y + offense_rate.y)) 
 ```
 
 ```{r}
@@ -861,5 +847,72 @@ library(kableExtra)
 # Display the model comparison table using kable
 kable_styling(kable(model_comparison, caption = "Model Comparison"), font_size = 14,  bootstrap_options = c("striped", "hover", "condensed")) 
 
+```
+```{r}
+#multinom with position regression
+multinom_pos_reg <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression, data = train_data_PL)
+summary(multinom_pos_reg)
+
+predictions <- predict(multinom_pos_reg, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_pos_reg, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+# This is the data frame
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>% 
+  filter(value >= 0.5)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+
+#Brier Score
+brier_score['multinomial pos'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+```
+```{r}
+init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
+                           ~s(expect_point_H) + s(pos_rating_regression)),
+                      data = filter(train_data_PL),
+                      family = multinom(K = 2))
+
+predictions <- predict(init_logit_gam_pos, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_pos, newdata = test_data_PL, type = "response")  
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+brier_score['Pos GAMs'] =  gams_dataframe_predict %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+#This is the data frame
+gams_dataframe_predict <- gams_dataframe_predict %>% 
+  rename(prob_losing = 'X1', prob_draw = 'X2', prob_win = 'X3') %>% 
+  pivot_longer(cols = starts_with('prob'))
+
+#Histogram
+gams_dataframe_predict %>% 
+  filter(value >=0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes_gams)
 ```
 
