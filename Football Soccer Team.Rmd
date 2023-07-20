@@ -609,12 +609,48 @@ brier_score <- data.frame(matrix(nrow = 1))
 expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
 summary(expect_model)
 
-predictions <- predict(expect_model, newdata = test_data_PL)
-
-
 predictions <- predict(expect_model, newdata = test_data_PL,type="probs")
 predictions
 
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+#Histogram
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  filter(value >= 0.5) %>% 
+  ggplot(aes(x = value, fill = name))+
+  geom_histogram(bins = 10, position = "dodge") +
+  facet_wrap(~ actual_outcomes)
+#Dot plot  
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+  ggplot(aes(x = value, y = actual_outcomes, col = name))+
+  geom_point() +
+  facet_wrap(~ name) +
+  geom_smooth() +
+  geom_jitter()
+
+# Box plot
+base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
+  mutate(row = 1:n()) %>%
+  pivot_longer(cols = starts_with('prob')) %>%
+ggplot(aes(x = name, y = value, fill = factor(actual_outcomes))) +
+  geom_boxplot() +
+  labs(title = "Predicted Probabilities of Match Outcomes",
+       x = "Observations",
+       y = "Predicted Probability",
+       fill = "Actual Outcomes") +
+  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5"),
+                    labels = c("Lose", "Draw", "Win")) +
+  theme_minimal() 
+```
+
+```{r}
 # Calibration Plots
 calib_data0 <- data.frame(x = predictions[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
 plot0 <- ggplot(calib_data0, aes(x=x, y=y)) + 
@@ -651,50 +687,9 @@ combined_plot <- plot0 + plot1 + plot3 + plot_layout(ncol = 3) +
 
 # Display the combined plot
 print(combined_plot)
+```
 
-#Predicting the grier score
-actual_outcomes <- test_data_PL$Full_time_result_point 
-predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_PL, type = "probs"))
-base_data_frame <- cbind(actual_outcomes, predicted_probs)
-
-# This is the data frame
-base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
-  mutate(row = 1:n()) %>%
-  pivot_longer(cols = starts_with('prob')) %>% 
-  filter(value >= 0.5)
-
-#Histogram
-base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
-  mutate(row = 1:n()) %>%
-  pivot_longer(cols = starts_with('prob')) %>%
-  filter(value >= 0.5) %>% 
-  ggplot(aes(x = value, fill = name))+
-  geom_histogram(bins = 10, position = "dodge") +
-  facet_wrap(~ actual_outcomes)
-#Dot plot  
-base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
-  mutate(row = 1:n()) %>%
-  pivot_longer(cols = starts_with('prob')) %>%
-  ggplot(aes(x = value, y = actual_outcomes, col = name))+
-  geom_point() +
-  facet_wrap(~ name) +
-  geom_smooth() +
-  geom_jitter()
-
-# Box plot
-base_data_frame %>% rename(prob_losing = '0', prob_draw = '1', prob_win = '3') %>%
-  mutate(row = 1:n()) %>%
-  pivot_longer(cols = starts_with('prob')) %>%
-ggplot(aes(x = name, y = value, fill = factor(actual_outcomes))) +
-  geom_boxplot() +
-  labs(title = "Predicted Probabilities of Match Outcomes",
-       x = "Observations",
-       y = "Predicted Probability",
-       fill = "Actual Outcomes") +
-  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5"),
-                    labels = c("Lose", "Draw", "Win")) +
-  theme_minimal() 
-
+```{r}
 #Brier Score
 brier_score['multinomial base'] = data.frame(
   actual_outcomes,
@@ -715,7 +710,6 @@ predictions <- predict(init_logit_base_gam, newdata = test_data_PL)
 #Predicting the grier score
 actual_outcomes_gams <- test_data_PL$Full_time_result_point 
 predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
-cbind(actual_outcomes_gams, predicted_probs_gams)
 
 brier_score['base GAMs'] = data.frame(
   actual_outcomes_gams,
@@ -732,7 +726,6 @@ predictions <- predict(init_logit_gam, newdata = test_data_PL)
 #Predicting the grier score
 actual_outcomes_gams <- test_data_PL$Full_time_result_point 
 predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
-cbind(actual_outcomes_gams, predicted_probs_gams)
 
 brier_score['streak GAMs'] = data.frame(
   actual_outcomes_gams,
@@ -749,7 +742,6 @@ predictions <- predict(init_logit_gam_xg, newdata = test_data_PL)
 #Predicting the grier score
 actual_outcomes_gams <- test_data_PL$Full_time_result_point 
 predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
-cbind(actual_outcomes_gams, predicted_probs_gams)
 
 brier_score['streak xg GAMs'] = data.frame(
   actual_outcomes_gams,
@@ -1080,6 +1072,7 @@ brier_score['rand forest pos'] = data.frame(
   brier_class(rfp_outcomes, X1:X3) %>% 
   select(.estimate)
 ```
+
 ```{r}
 #full gams model
 init_logit_gam_full <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
@@ -1111,6 +1104,7 @@ gams_dataframe_predict %>%
   geom_histogram(bins = 10, position = "dodge") +
   facet_wrap(~ actual_outcomes_gams)
 ```
+
 ```{r}
 #random forest model with brier score
 random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train_data_PL, probability = TRUE)
@@ -1128,5 +1122,37 @@ brier_score['rand forest base'] = data.frame(
   select(.estimate)
 
 brier_score <- data.frame(t(brier_score))
+```
+
+```{r}
+# Box plot
+brier_score$model <- row.names(brier_score)
+brier_score <- brier_score %>% 
+  mutate(type = case_when(startsWith(model, "multinomial") ~ "multinomial",
+                          startsWith(model, "rand forest") ~ "random forest",
+                          TRUE ~ "GAMs"))
+
+brier_score %>% 
+  ggplot(aes(x = type, y = brier.score, fill = type, point)) +
+  geom_boxplot() +
+  #geom_point(aes(model)) +
+  labs(title = "Predicted Probabilities of Match Outcomes",
+       x = "Observations",
+       y = "Predicted Probability",
+       fill = "Actual Outcomes") +
+  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5")) +
+  theme_minimal() 
+
+brier_score %>% 
+  filter(type != "random forest") %>% 
+  ggplot(aes(x = type, y = brier.score, fill = type, point)) +
+  geom_boxplot() +
+  #geom_point(aes(model)) +
+  labs(title = "Predicted Probabilities of Match Outcomes",
+       x = "Observations",
+       y = "Predicted Probability",
+       fill = "Actual Outcomes") +
+  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5")) +
+  theme_minimal() 
 ```
 
