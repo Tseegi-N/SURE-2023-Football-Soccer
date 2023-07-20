@@ -722,7 +722,7 @@ brier_score['streak xg GAMs'] = data.frame(
 #random forest model with brier score
 random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
 
-predictions <- predict(random_forest, data = test_data_PL)
+rf_predictions <- predict(random_forest, data = test_data_PL)
 
 #Predicting the grier score
 rf_outcomes <- test_data_PL$Full_time_result_point 
@@ -798,15 +798,23 @@ predicted_labels_mn <- predict(expect_model, newdata = test_data_PL, type = "cla
 
 true_labels <- test_data_PL$Full_time_result_point
 
-accuracy_multinom <- sum(predicted_labels == true_labels) / length(true_labels)
+accuracy_multinom <- sum(predicted_labels_mn == true_labels) / length(true_labels)
 
 cat("Accuracy:", accuracy_multinom, "\n")
+predicted_labels_gam <- max.col(predicted_probs_gams)
+
+# Calculate accuracy
+accuracy_gams_base <- sum(predicted_labels_gam == true_labels) / length(true_labels)
+
+# Print the accuracy
+cat("Accuracy base:", accuracy_gams_base, "\n")
+
 ```
 ```{r}
 rf_labels <- test_data_PL$Full_time_result_num
 
 
-rf_predicted_labels <- apply(predictions$predictions, 1, which.max) - 1
+rf_predicted_labels <- apply(rf_predictions$predictions, 1, which.max) - 1
 
 #confusion matrix
 conf_matrix <- table(Actual = rf_labels, Predicted = rf_predicted_labels)
@@ -827,13 +835,12 @@ accuracy_gamsxg <- sum(predicted_labels_gamxg == true_labels) / length(true_labe
 cat("Accuracy XG:", accuracy_gamsxg, "\n")
 
 
-predicted_labels_gam <- max.col(predicted_probs_gams_base)
 ```
 ```{r}
 #Accuracy and brier score table
 
 model_names <- c("Random Forest", "Base gams model", "Gams Model xG", "Multinomial")  
-accuracies <- c(accuracy_rf,accuracy_gams_base, accuracy_gams, accuracy_multinom)  
+accuracies <- c(overall_accuracy, accuracy_gams_base, accuracy_gamsxg, accuracy_multinom)  
 brier_scores <- c(0.4418142, 0.25744, 0.2648771, 0.2591487)
 
 
@@ -885,6 +892,7 @@ brier_score['multinomial pos'] = data.frame(
   select(.estimate)
 
 ```
+
 ```{r}
 init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
                            ~s(expect_point_H) + s(pos_rating_regression)),
