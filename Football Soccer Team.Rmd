@@ -681,12 +681,33 @@ plot3 <- ggplot(calib_data3, aes(x=x, y=y)) +
 # Set a common y-axis limit for all plots
 y_axis_lim <- c(0, 1)
 
-# Combine the plots into a single plot
+# Combine the plots into a a single grid (still three plots)
 combined_plot <- plot0 + plot1 + plot3 + plot_layout(ncol = 3) + 
                  ylim(y = y_axis_lim)
 
-# Display the combined plot
 print(combined_plot)
+
+# Calibration Plots into one plot
+calib_data <- data.frame(
+  x = c(predictions[, 1], predictions[, 2], predictions[, 3]),
+  y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
+  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions)))
+)
+
+plot_combined <- ggplot(calib_data, aes(x = x, y = y, color = group)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted Probability", y = "Observed fraction",
+       title = "Calibration Curves for Different Outcomes") +
+  ylim(0, 1) +
+  scale_color_manual(values = c("red", "blue", "green"))  # Choose desired colors for the curves
+
+# Display the combined plot
+print(plot_combined)
+
 ```
 
 ```{r}
