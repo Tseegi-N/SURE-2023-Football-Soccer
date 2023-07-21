@@ -1140,7 +1140,7 @@ rfp_predictions <- predict(random_forest_pos, data = test_data_PL)
 
 #Predicting the grier score
 rfp_outcomes <- test_data_PL$Full_time_result_point 
-rfp_probs_base <- predict(random_forest_pos, data = test_data_PL, type = "response")  
+rfp_probs <- predict(random_forest_pos, data = test_data_PL, type = "response")  
 
 brier_score['rand forest pos'] = data.frame(
   rfp_outcomes,
@@ -1189,7 +1189,7 @@ random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train
 
 #Predicting the grier score
 rf_outcomes <- test_data_PL$Full_time_result_point 
-rf_probs <- predict(random_forest_base, data = test_data_PL, type = "response")  
+rf_probs_base <- predict(random_forest_base, data = test_data_PL, type = "response")  
 
 brier_score['rand forest base'] = data.frame(
   rf_outcomes,
