@@ -1236,22 +1236,25 @@ brier_table %>%
 ```
 
 ```{r}
+rf_prob <- as_tibble(rf_probs)
 # Create a calibration curve
-calibration_df <- data.frame(prob = rf_probs, outcome = rf_outcomes)
+calibration_rf <- data.frame(prob = rf_probs, outcome = rf_outcomes)
 
 # Calculate observed probabilities for each bin of predicted probabilities
-calibration_curve <- data.frame(obs_prob = c(), pred_prob = c())
+calibration_curve_rf <- data.frame(obs_prob = c(), pred_prob = c())
 
 for (i in seq(0, 1, by = 0.1)) {
-  bin_indices <- calibration_df$prob >= i & calibration_df$prob < i + 0.1
-  bin_obs_probs <- mean(calibration_df$outcome[bin_indices])
-  calibration_curve <- rbind(calibration_curve, data.frame(obs_prob = bin_obs_probs, pred_prob = i + 0.05))
+  bin_indices <- calibration_rf$prob >= i & calibration_rf$prob < i + 0.1
+  bin_obs_probs <- mean(calibration_rf$outcome[bin_indices])
+  calibration_curve_Rf_base <- rbind(calibration_curve_rf, data.frame(obs_prob = bin_obs_probs, pred_prob = i + 0.05))
 }
 
 # Plot the calibration curve
-plot(calibration_curve$pred_prob, calibration_curve$obs_prob, type = "b",
+plot(calibration_curve_Rf_base$pred_prob, calibration_curve_rf$obs_prob, type = "b",
      xlab = "Predicted Probabilities", ylab = "Observed Probabilities", 
      xlim = c(0, 1), ylim = c(0, 1), main = "Calibration Curve for Random Forest Model")
 abline(0, 1, lty = 2)  # Add the diagonal line representing perfect calibration
 ```
+
+
 
