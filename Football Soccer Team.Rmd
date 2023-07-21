@@ -957,8 +957,6 @@ init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_
                       data = filter(train_data_PL),
                       family = multinom(K = 2))
 
-predictions <- predict(init_logit_gam_pos, newdata = test_data_PL)
-
 #Predicting the grier score
 actual_outcomes_gams <- test_data_PL$Full_time_result_point 
 predicted_probs_gams <- predict(init_logit_gam_pos, newdata = test_data_PL, type = "response")  
@@ -981,6 +979,65 @@ gams_dataframe_predict %>%
   geom_histogram(bins = 10, position = "dodge") +
   facet_wrap(~ actual_outcomes_gams)
 ```
+
+```{r}
+#Calibration of Position GAMs
+# Calibration Plots
+calib_data0_gams <- data.frame(x = predicted_probs_gams[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
+plot0_gams <- ggplot(calib_data0_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Loses") +
+              ylim(0,1)
+
+calib_data1_gams <- data.frame(x = predicted_probs_gams[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
+plot1_gams <- ggplot(calib_data1_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Draws") +
+              ylim(0,1)
+
+calib_data3_gams <- data.frame(x = predicted_probs_gams[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
+plot3_gams <- ggplot(calib_data3_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Wins") +
+              ylim(0,1)
+
+# Combine the plots into a a single grid (still three plots)
+combined_plot_gams <- plot0_gams + plot1_gams + plot3_gams + plot_layout(ncol = 3) + 
+                 ylim(y = y_axis_lim)
+
+print(combined_plot_gams)
+
+# Calibration Plots into one plot
+calib_data_gams <- data.frame(
+  x = c(predicted_probs_gams[, 1], predicted_probs_gams[, 2], predicted_probs_gams[, 3]),
+  y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
+  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions)))
+)
+
+plot_combined_gams <- ggplot(calib_data_gams, aes(x = x, y = y, color = group)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted Probability", y = "Observed fraction",
+       title = "Calibration Curves for Different Outcomes") +
+  ylim(0, 1) +
+  scale_color_manual(values = c("red", "blue", "green"))  # Choose desired colors for the curves
+
+# Display the combined plot
+print(plot_combined_gams)
+```
+
 
 ```{r}
 #multinom with position and betting
