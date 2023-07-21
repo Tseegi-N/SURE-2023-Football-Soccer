@@ -697,7 +697,7 @@ calib_data <- data.frame(
 )
 
 plot_combined <- ggplot(calib_data, aes(x = x, y = y, color = group)) +
-  geom_point() +
+  geom_point(alpha = 0.4) +
   geom_smooth(se = FALSE) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   labs(x = "Predicted Probability", y = "Observed fraction",
