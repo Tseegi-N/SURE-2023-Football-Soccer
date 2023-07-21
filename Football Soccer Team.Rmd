@@ -1147,13 +1147,14 @@ brier_score <- data.frame(t(brier_score))
 
 ```{r}
 # Box plot
-brier_score$model <- row.names(brier_score)
-brier_score <- brier_score %>% 
+brier_table <- brier_score
+brier_table$model <- row.names(brier_score)
+brier_table <- brier_table %>% 
   mutate(type = case_when(startsWith(model, "multinomial") ~ "multinomial",
                           startsWith(model, "rand forest") ~ "random forest",
                           TRUE ~ "GAMs"))
 
-brier_score %>% 
+brier_table %>% 
   ggplot(aes(x = type, y = brier.score, fill = type, point)) +
   geom_boxplot() +
   #geom_point(aes(model)) +
@@ -1164,7 +1165,7 @@ brier_score %>%
   scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5")) +
   theme_minimal() 
 
-brier_score %>% 
+brier_table %>% 
   filter(type != "random forest") %>% 
   ggplot(aes(x = type, y = brier.score, fill = type, point)) +
   geom_boxplot() +
