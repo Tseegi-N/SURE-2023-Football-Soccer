@@ -234,11 +234,14 @@ bettingBasicPL2018 <-  bettingBasicPL2018 %>%
          expect_bet_A = 1/B365A,
          expect_bet_D = 1/B365D,
          marginal_prob_total = expect_bet_H + expect_bet_D + expect_bet_A,
-         percent_H = expect_bet_H *100/marginal_prob_total,
-         percent_D = expect_bet_D *100/marginal_prob_total,
+         percent_H = expect_bet_H/marginal_prob_total,
+         percent_D = expect_bet_D/marginal_prob_total,
+         percent_A = expect_bet_A/marginal_prob_total,
          expect_point_H = percent_H * 3 + percent_D,
          Full_time_result_point =  ifelse((Full_time_result == "H"), 3, 
-                        ifelse((Full_time_result == "D"), 1, 0)))
+                        ifelse((Full_time_result == "D"), 1, 0)),
+         expect_point_A = percent_A * 3 + percent_D,
+         expect_point_diff_bet = expect_point_H - expect_point_A)
   
 
 ```
@@ -1294,5 +1297,14 @@ plot_combined_rf <- ggplot(calib_data_rf, aes(x = x, y = y, color = group)) +
 print(plot_combined_rf)
 ```
 
+```{r}
+bettingBasicPL2018 %>% 
+  ggplot() +
+  geom_histogram(aes(x = xg_diff), fill = "darkred", alpha = 0.4, bins = 18) +
+  geom_histogram(aes(x = expect_point_diff_bet), fill = "blue", alpha = 0.4, bins = 18) +
+  facet_wrap(~Full_time_result) +
+  labs(x = "expected goals differential", color = "w/o betting odds") +
+  theme_bw() 
+```
 
 
