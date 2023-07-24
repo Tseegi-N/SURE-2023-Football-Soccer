@@ -1,19 +1,69 @@
 ---
-title: "Soccer Report CMSAC 2023"
+title: "To Bet or Not to Bet: Analyzing the Credibility of Fixed-odds Betting on Match Outcomes"
+author: "Tseegi Nyamdorj, Fungai Jani, Maria Tsakalakos"
 output: html_document
-date: "2023-07-21"
-output: 
-  pdf_document:
-    toc: yes
-    toc_depth: '2'
-  html_document:
-    toc: yes
-    toc_depth: 2
-    toc_float: yes
-    fig_width: 7
-    fig_height: 6
-    fig_caption: yes
-    theme: lumen
-    df_print: paged
-    code_folding: show
+date: "2023-07-24"
 ---
+
+## Introduction 
+
+The world of soccer is constantly growing, with millions of fans all over the globe. With the growing fanbase comes a growing betting community. Soccer accounts for 70% of all global sports bets placed. We focus specifically on the Premier League, as it is the most watched soccer league. A number of the Premier League clubs have betting companies as sponsors on their kits, which encourages supporters to place bets. Are the odds for each match's outcome fair? Do the betting favorites tend to come out on top in the Premier League? Attempting to predict Premier League match outcomes will have real world implications on the betting market, journalism, and coaching decisions.
+ 
+Previous studies have used Bayesian nets models to predict match results in Premier League seasons, with accuracies floating around 40%. The majority of the models were not good at predicting the matches. These suboptimal performances indicate the complexity associated with forecasting football match outcomes. Gambling organizations also prioritize match prediction probabilities to provide oddsmakers. By using the data from these models, oddsmakers may create fair and competitive betting settings for the general public by providing them with educated and balanced odds.  This highlights the need for robust and innovative approaches in this area.
+ 
+This paper aims to build a comprehensive predictive framework for forecasting match results in the Premier League season of 2018-2019. To build upon the already existing foundation of betting odds we enriched our predictive models by adding  two key components: player evaluation metrics and the recent form of the teams based on their performances over the last five matches. The addition of player evaluation metrics is to give a better gauge of the strength of each team and where the strength lies in comparison to its opposition.  We aim to contribute significant insights that can help sports analysts, coaches and enthusiast alike in making more informed decisions and understanding the dynamics of competitive football matches in one of the most esteemed leagues in the world through a thorough evaluation of three different models: Generalized Additive Models, Random Forest and Multinomial Models.
+
+## Exploratory Data Analysis & Data Summary
+
+```{r, warning=FALSE, include=FALSE}
+# install necessary packages
+library(devtools)
+library(StatsBombR)
+library(worldfootballR)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(FNN)
+library(tidymodels)
+library(aod)
+library(nnet)
+library(ranger)
+library(readr)
+library(mgcv)
+library(nlme)
+library(yardstick)
+library(scoring)
+library(ggimage)
+library(readr)
+library(patchwork)
+```
+
+
+## Methods
+
+Prior to applying all explanatory parameters to our models, we wanted to first test-out the predictability of match outcomes through betting-odds alone. As the dependent variable (match outcome) is an ordered categorical variable, the models we could utilize were inherently limited to main three models: Generalized Additive Models (GAMs), Multinomial regressions, and Random forest algorithms. After assembling the base models, we added more independent parameters to increase the accuracy prediction of our models. In total, we used four different explanatory variables, namely the streak difference (the last five games’ results of each team leading up to that specific match), expected goals (XGs) for the home team computed by the betting odds, XGs difference, and XGs difference based on defense and offense rating of home/away teams. 
+
+Then models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt the available data, which then can be used to test out the remaining 2018/19 season matches.       
+
+- **Multinomial regression**: Firstly, we fit multinomial models as the response variable is a categorical data that requires using a linear combination of the observed variables to estimate the probability of each classified value of the dependent parameter. A compact version of the prediction function is:
+
+$f(k, i) = \beta_k + x_i$
+where $\beta_k$ is the set of regression coefficients associated with outcome k, and $x_i$  (row vector) is the set of explanatory variables associated with observation $i$.
+ 
+- **Generalized Additive Models (GAMs)**: We fit GAMs with various combinations of explanatory variables since some parameters could result in the model overfitting on the training data. As mentioned previously, the response variable being an ordered, non-binary categorical data meant that we had to use multinomial GAMs with K+1 categories for K linear predictors. The likelihood of each response variable can be transcribed in the following way: 
+\[\frac{e^{\eta_y}}{1 + \Sigma_j e^{\eta_i}}\] where $\eta_y$ is the linear predictor of $y$ category of the dependent variable. 
+
+- **Random forest algorithms**: Lastly, we utilized the Random Forest to generate predictions of different categories of the dependent variable. To quickly implement random forest, we used the ranger package with classification method. 
+
+
+## Results
+
+## Conclusion (limitation)
+
+## Figures and Tables
+
+## Acknowledgments
+
+## Reference
+
