@@ -650,7 +650,10 @@ ggplot(aes(x = name, y = value, fill = factor(actual_outcomes))) +
        fill = "Actual Outcomes") +
   scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5"),
                     labels = c("Lose", "Draw", "Win")) +
-  theme_minimal() 
+  theme_minimal() +
+  scale_x_discrete(labels = c("prob_losing" = "Probability of Losing",
+                             "prob_draw" = "Probability of Draw",
+                             "prob_win" = "Probability of Winning"))
 ```
 
 ```{r}
