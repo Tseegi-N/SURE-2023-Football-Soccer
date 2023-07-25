@@ -1311,7 +1311,8 @@ bettingBasicPL2018 %>%
   geom_histogram(aes(x = xg_diff, fill = "XG Difference"), alpha = 0.4, bins = 18) +
   geom_histogram(aes(x = expect_point_diff_bet, fill = "EG Difference Betting"), alpha = 0.4, bins = 18) +
   facet_wrap(~Full_time_result) +
-  labs(x = "Expected Goals Differential", fill = "Data") +
+  labs(x = "Expected Goals Differential", fill = "Data", 
+       title = "Comparing Expected Goals Between Basic and Betting Data") +
   scale_fill_manual(values = c("XG Difference" = "darkred", "EG Difference Betting" = "blue")) +
   theme_bw() +
   theme(legend.position = "bottom")
