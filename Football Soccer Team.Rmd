@@ -709,9 +709,10 @@ plot_combined <- ggplot(calib_data, aes(x = x, y = y, color = group)) +
   labs(x = "Predicted Probability", y = "Observed fraction",
        title = "Calibration Curves for Different Outcomes") +
   ylim(0, 1) +
-  scale_color_manual(values = c("red", "blue", "green"))  # Choose desired colors for the curves
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
 
-# Display the combined plot
+
 print(plot_combined)
 
 ```
@@ -1038,7 +1039,8 @@ plot_combined_gams <- ggplot(calib_data_gams, aes(x = x, y = y, color = group)) 
   labs(x = "Predicted Probability", y = "Observed fraction",
        title = "Calibration Curves for Different Outcomes") +
   ylim(0, 1) +
-  scale_color_manual(values = c("red", "blue", "green"))  # Choose desired colors for the curves
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
 
 # Display the combined plot
 print(plot_combined_gams)
@@ -1237,7 +1239,9 @@ brier_table %>%
        x = "Observations",
        y = "Predicted Probability",
        fill = "Actual Outcomes") +
-  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5")) +
+  scale_fill_manual(values = c("#0000FF", "#FFCCCC", "#CCFFE5"),
+                    labels = c("multinomial" = "Multinomial Model")) +
+  scale_x_discrete(labels = c("multinomial" = "Multinomial Model" ))
   theme_minimal() 
 ```
 
@@ -1294,7 +1298,8 @@ plot_combined_rf <- ggplot(calib_data_rf, aes(x = x, y = y, color = group)) +
   labs(x = "Predicted Probability", y = "Observed fraction",
        title = "Calibration Curves for Different Outcomes") +
   ylim(0, 1) +
-  scale_color_manual(values = c("red", "blue", "green"))  # Choose desired colors for the curves
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
 
 # Display the combined plot
 print(plot_combined_rf)
@@ -1303,11 +1308,13 @@ print(plot_combined_rf)
 ```{r}
 bettingBasicPL2018 %>% 
   ggplot() +
-  geom_histogram(aes(x = xg_diff), fill = "darkred", alpha = 0.4, bins = 18) +
-  geom_histogram(aes(x = expect_point_diff_bet), fill = "blue", alpha = 0.4, bins = 18) +
+  geom_histogram(aes(x = xg_diff, fill = "XG Difference"), alpha = 0.4, bins = 18) +
+  geom_histogram(aes(x = expect_point_diff_bet, fill = "EG Difference Betting"), alpha = 0.4, bins = 18) +
   facet_wrap(~Full_time_result) +
-  labs(x = "expected goals differential", color = "w/o betting odds") +
-  theme_bw() 
+  labs(x = "Expected Goals Differential", fill = "Data") +
+  scale_fill_manual(values = c("XG Difference" = "darkred", "EG Difference Betting" = "blue")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
 
 
