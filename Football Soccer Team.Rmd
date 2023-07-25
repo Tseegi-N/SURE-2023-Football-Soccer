@@ -1308,12 +1308,16 @@ print(plot_combined_rf)
 ```{r}
 bettingBasicPL2018 %>% 
   ggplot() +
-  geom_histogram(aes(x = xg_diff, fill = "XG Difference"), alpha = 0.4, bins = 18) +
-  geom_histogram(aes(x = expect_point_diff_bet, fill = "EG Difference Betting"), alpha = 0.4, bins = 18) +
-  facet_wrap(~Full_time_result) +
+  geom_histogram(aes(x = xg_diff, fill = "XGs Difference"), alpha = 0.4, bins = 18) +
+  geom_histogram(aes(x = expect_point_diff_bet, fill = "XGs Difference Betting"), alpha = 0.4, bins = 18) +
+  facet_wrap(~Full_time_result, labeller = labeller(Full_time_result = c(
+    "A" = "Away",
+    "D" = "Draw",
+    "H" = "Home"
+  ))) +
   labs(x = "Expected Goals Differential", fill = "Data", 
-       title = "Comparing Expected Goals Between Basic and Betting Data") +
-  scale_fill_manual(values = c("XG Difference" = "darkred", "EG Difference Betting" = "blue")) +
+       title = "Comparing Expected Goals Differential Between Basic and Betting Data") +
+  scale_fill_manual(values = c("XGs Difference" = "darkred", "XGs Difference Betting" = "blue")) +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
