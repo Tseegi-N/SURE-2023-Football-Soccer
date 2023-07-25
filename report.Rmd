@@ -295,7 +295,456 @@ where $\beta_k$ is the set of regression coefficients associated with outcome k,
 
 - **Random forest algorithms**: Lastly, we utilized the Random Forest to generate predictions of different categories of the dependent variable. To quickly implement random forest, we used the ranger package with classification method. 
 
+```{r, include=FALSE}
+#weighted ranking
+test$weightedminutes <- test$min_per_match / 90
+test$weighted_overall_rating <- test$weightedminutes * test$over
+
+#change winning number for model
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
+
+#grouping by position and average weighted ranking
+teams <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  summarise(team_sum = sum(position_average)) 
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(difference_added_avg_pos = team_sum.x - team_sum.y) 
+
+#offense and defense rating
+teams_rating <- test %>% 
+  group_by(club_name, position) %>% 
+  summarise(position_average = mean(weighted_overall_rating)) %>% 
+  select(club_name, position, position_average) %>% 
+  ungroup() %>% 
+  group_by(club_name) %>% 
+  pivot_wider(names_from = position, values_from = position_average) %>% 
+  mutate(defense_rate = (Defender +Goalkeeper)/200,
+         offense_rate = (Forward + Midfielder)/200) %>% 
+  select(club_name, defense_rate, offense_rate)
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  left_join(teams_rating, by = c("HomeTeam" = "club_name")) %>%
+  left_join(teams_rating, by = c("AwayTeam" = "club_name")) %>%  
+  mutate(pos_rating_regression = (team_a_xg + defense_rate.x + offense_rate.x) - (team_b_xg + defense_rate.y + offense_rate.y)) 
+
+#set-up training data
+train_data_PL <- bettingBasicPL2018 %>% 
+  filter(!month %in% 2:5)
+
+test_data_PL <- bettingBasicPL2018 %>% 
+  filter(month %in% 2:5)
+
+#set-up models
+init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
+                           ~s(expect_point_H) + s(streak_diff)),
+                      data = filter(train_data_PL),
+                      family = multinom(K = 2))
+ 
+init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
+                           family = multinom(K = 2), 
+                           data = train_data_PL)
+
+init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff)),
+                      data = train_data_PL,
+                      family = multinom(K = 2))
+
+expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_PL)
+
+random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_PL, probability = TRUE)
+
+multinom_pos_reg <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression, data = train_data_PL)
+
+init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
+                           ~s(expect_point_H) + s(pos_rating_regression)),
+                      data = filter(train_data_PL),
+                      family = multinom(K = 2))
+
+multinom_betting_pos <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H, data = train_data_PL)
+
+multinom_betting_pos_streak <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff, data = train_data_PL)
+
+multinom_full <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff + xg_diff, data = train_data_PL)
+
+random_forest_pos <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff + pos_rating_regression, data = train_data_PL, probability = TRUE)
+
+init_logit_gam_full <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression), 
+                            ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression)),
+                      data = train_data_PL,
+                      family = multinom(K = 2))
+
+random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train_data_PL, probability = TRUE)
+
+#brier score dataframe 
+brier_score <- data.frame(matrix(nrow = 1))
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_PL, type = "probs"))
+predictions_cal <- predict(expect_model, newdata = test_data_PL,type="probs")
+predictions
+
+brier_score['multinomial base'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+brier_score <-brier_score[-c(1)] 
+row.names(brier_score)[1] <- "brier score"
+
+predictions <- predict(init_logit_base_gam, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_PL, type = "response")  
+
+brier_score['base GAMs'] = data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+predictions <- predict(init_logit_gam, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_PL, type = "response")  
+
+brier_score['streak GAMs'] = data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+predictions <- predict(init_logit_gam_xg, newdata = test_data_PL)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_PL, type = "response")  
+
+brier_score['streak xg GAMs'] = data.frame(
+  actual_outcomes_gams,
+  predicted_probs_gams
+) %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+rf_predictions <- predict(random_forest, data = test_data_PL)
+
+#Predicting the grier score
+rf_outcomes <- test_data_PL$Full_time_result_point 
+rf_probs <- predict(random_forest, data = test_data_PL, type = "response")  
+
+brier_score['rand forest streak Xg'] = data.frame(
+  rf_outcomes,
+  rf_probs
+) %>% 
+  mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+  brier_class(rf_outcomes, X1:X3) %>% 
+  select(.estimate)
+
+#Predicting the grier score
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_pos_reg, newdata = test_data_PL, type = "probs"))
+base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+#Brier Score
+brier_score['multinomial pos'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_pos, newdata = test_data_PL, type = "response")  
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+brier_score['Pos GAMs'] =  gams_dataframe_predict %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_PL, type = "probs"))
+
+#Brier Score
+brier_score['multinomial betting pos'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_betting_pos_streak, newdata = test_data_PL, type = "probs"))
+
+brier_score['multinomial betting pos streak'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_full, newdata = test_data_PL, type = "probs"))
+
+brier_score['multinomial full'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+
+rfp_predictions <- predict(random_forest_pos, data = test_data_PL)
+
+#Predicting the grier score
+rfp_outcomes <- test_data_PL$Full_time_result_point 
+rfp_probs <- predict(random_forest_pos, data = test_data_PL, type = "response")  
+
+brier_score['rand forest pos'] = data.frame(
+  rfp_outcomes,
+  rfp_probs
+) %>% 
+  mutate(rfp_outcomes = factor(rfp_outcomes)) %>% 
+  brier_class(rfp_outcomes, X1:X3) %>% 
+  select(.estimate)
+
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams <- predict(init_logit_gam_full, newdata = test_data_PL, type = "response")  
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+brier_score['Full GAMs'] =  gams_dataframe_predict %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+rf_outcomes <- test_data_PL$Full_time_result_point 
+rf_probs_base <- predict(random_forest_base, data = test_data_PL, type = "response")  
+
+brier_score['rand forest base'] = data.frame(
+  rf_outcomes,
+  rf_probs
+) %>% 
+  mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+  brier_class(rf_outcomes, X1:X3) %>% 
+  select(.estimate)
+
+brier_score <- data.frame(t(brier_score))
+
+brier_table <- brier_score
+brier_table$model <- row.names(brier_score)
+brier_table <- brier_table %>% 
+  mutate(type = case_when(startsWith(model, "multinomial") ~ "multinomial",
+                          startsWith(model, "rand forest") ~ "random forest",
+                          TRUE ~ "GAMs"))
+```
+
+
 ## Results
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+brier_table %>% 
+  select(brier.score, model, type) %>% 
+  arrange(brier.score)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Calibration Plots
+calib_data0 <- data.frame(x = predictions_cal[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
+plot0 <- ggplot(calib_data0, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Loses") +
+              ylim(0,1)
+
+calib_data1 <- data.frame(x = predictions_cal[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
+plot1 <- ggplot(calib_data1, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Draws") +
+              ylim(0,1)
+
+calib_data3 <- data.frame(x = predictions_cal[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
+plot3 <- ggplot(calib_data3, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Wins") +
+              ylim(0,1)
+# Set a common y-axis limit for all plots
+y_axis_lim <- c(0, 1)
+
+# Combine the plots into a a single grid (still three plots)
+combined_plot <- plot0 + plot1 + plot3 + plot_layout(ncol = 3) + 
+                 ylim(y = y_axis_lim)
+
+# Calibration Plots into one plot
+calib_data <- data.frame(
+  x = c(predictions_cal[, 1], predictions_cal[, 2], predictions_cal[, 3]),
+  y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
+  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions_cal)))
+)
+
+plot_combined <- ggplot(calib_data, aes(x = x, y = y, color = group)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted Probability", y = "Observed fraction",
+       title = "Calibration Curves for Different Outcomes") +
+  ylim(0, 1) +
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
+
+
+print(plot_combined)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Calibration of Position GAMs
+# Calibration Plots
+calib_data0_gams <- data.frame(x = predicted_probs_gams[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
+plot0_gams <- ggplot(calib_data0_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Loses") +
+              ylim(0,1)
+
+calib_data1_gams <- data.frame(x = predicted_probs_gams[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
+plot1_gams <- ggplot(calib_data1_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Draws") +
+              ylim(0,1)
+
+calib_data3_gams <- data.frame(x = predicted_probs_gams[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
+plot3_gams <- ggplot(calib_data3_gams, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Wins") +
+              ylim(0,1)
+
+# Combine the plots into a a single grid (still three plots)
+combined_plot_gams <- plot0_gams + plot1_gams + plot3_gams + plot_layout(ncol = 3) + 
+                 ylim(y = y_axis_lim)
+
+# Calibration Plots into one plot
+calib_data_gams <- data.frame(
+  x = c(predicted_probs_gams[, 1], predicted_probs_gams[, 2], predicted_probs_gams[, 3]),
+  y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
+  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions)))
+)
+
+plot_combined_gams <- ggplot(calib_data_gams, aes(x = x, y = y, color = group)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted Probability", y = "Observed fraction",
+       title = "Calibration Curves for Different Outcomes") +
+  ylim(0, 1) +
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
+
+# Display the combined plot
+print(plot_combined_gams)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Calibration of random forest base
+# Calibration Plots
+rand_forest_predictions <- data.frame(rf_probs_base)
+calib_data0_rf <- data.frame(x = rand_forest_predictions[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
+plot0_rf <- ggplot(calib_data0_rf, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Loses") +
+              ylim(0,1)
+
+calib_data1_rf <- data.frame(x = rand_forest_predictions[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
+plot1_rf <- ggplot(calib_data1_rf, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Draws") +
+              ylim(0,1)
+
+calib_data3_rf <- data.frame(x = rand_forest_predictions[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
+plot3_rf <- ggplot(calib_data3_rf, aes(x=x, y=y)) + 
+              geom_point() +
+              geom_smooth(se = FALSE) +
+              geom_abline(slope = 1, intercept=0, linetype="dashed") +
+              labs(x="Predicted Probability", y = "Observed fraction",
+                   title = "Probability Home \nTeam Wins") +
+              ylim(0,1)
+
+# Combine the plots into a a single grid (still three plots)
+combined_plot_rf <- plot0_rf + plot1_rf + plot3_rf + plot_layout(ncol = 3) + 
+                 ylim(y = y_axis_lim)
+
+# Calibration Plots into one plot
+calib_data_rf <- data.frame(
+  x = c(rand_forest_predictions[, 1], rand_forest_predictions[, 2], rand_forest_predictions[, 3]),
+  y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
+        ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
+  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions)))
+)
+
+plot_combined_rf <- ggplot(calib_data_rf, aes(x = x, y = y, color = group)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(se = FALSE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted Probability", y = "Observed fraction",
+       title = "Calibration Curves for Different Outcomes") +
+  ylim(0, 1) +
+  scale_color_manual(values = c("red", "blue", "green")) +
+  guides(color = guide_legend(title = "Expected Outcome"))
+
+# Display the combined plot
+print(plot_combined_rf)
+```
 
 ## Conclusion (limitation)
 
