@@ -1,0 +1,278 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={To Bet or Not to Bet: Analyzing the Credibility of Fixed-odds Betting on Match Outcomes},
+  pdfauthor={Tseegi Nyamdorj, Fungai Jani, Maria Tsakalakos},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{To Bet or Not to Bet: Analyzing the Credibility of Fixed-odds
+Betting on Match Outcomes}
+\author{Tseegi Nyamdorj, Fungai Jani, Maria Tsakalakos}
+\date{2023-07-24}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\hypertarget{introduction}{%
+\subsection{Introduction}\label{introduction}}
+
+The world of soccer is constantly growing, with millions of fans all
+over the globe. With the growing fanbase comes a growing betting
+community. Soccer accounts for 70\% of all global sports bets placed. We
+focus specifically on the Premier League, as it is the most watched
+soccer league. A number of the Premier League clubs have betting
+companies as sponsors on their kits, which encourages supporters to
+place bets. Are the odds for each match's outcome fair? Do the betting
+favorites tend to come out on top in the Premier League? Attempting to
+predict Premier League match outcomes will have real world implications
+on the betting market, journalism, and coaching decisions.
+
+Previous studies have used Bayesian nets models to predict match results
+in Premier League seasons, with accuracies floating around 40\%. The
+majority of the models were not good at predicting the matches. These
+suboptimal performances indicate the complexity associated with
+forecasting football match outcomes. Gambling organizations also
+prioritize match prediction probabilities to provide oddsmakers. By
+using the data from these models, oddsmakers may create fair and
+competitive betting settings for the general public by providing them
+with educated and balanced odds. This highlights the need for robust and
+innovative approaches in this area.
+
+This paper aims to build a comprehensive predictive framework for
+forecasting match results in the Premier League season of 2018-2019. To
+build upon the already existing foundation of betting odds we enriched
+our predictive models by adding two key components: player evaluation
+metrics and the recent form of the teams based on their performances
+over the last five matches. The addition of player evaluation metrics is
+to give a better gauge of the strength of each team and where the
+strength lies in comparison to its opposition. We aim to contribute
+significant insights that can help sports analysts, coaches and
+enthusiast alike in making more informed decisions and understanding the
+dynamics of competitive football matches in one of the most esteemed
+leagues in the world through a thorough evaluation of three different
+models: Generalized Additive Models, Random Forest and Multinomial
+Models.
+
+\hypertarget{exploratory-data-analysis-data-summary}{%
+\subsection{Exploratory Data Analysis \& Data
+Summary}\label{exploratory-data-analysis-data-summary}}
+
+\hypertarget{the-data}{%
+\subsubsection{The Data:}\label{the-data}}
+
+For our research, we utilized two publicly available data sets from the
+Premier League 2018-2019 season. The first data set was obtained from
+\url{footstats.org}, accessible under the ``Football Stats Database to
+CSV and Excel'' section on the website. This CSV file contained
+game-level data, with each entry representing a specific game from the
+2018-2019 season. The data set comprised approximately 72 columns,
+providing detailed information about various events occurring in each
+match. These variables covered a wide range of aspects, including the
+names of the home and away teams, the full-time result of the match,
+expected goals, shots on target for the home team, as well as additional
+details like the referee's name, the stadium where the match was played,
+and the timestamp of the game.
+
+The second data set we used was betting data from football-data.co.uk,
+where we were able to obtain free soccer betting odds \& results, match
+statistics, odds comparison, and more. Similar to the previous data set,
+we specifically downloaded data pertaining to the Premier League's
+2018-2019 season to ensure compatibility with our existing dataset. The
+football-data.co.uk data set differed from the previous one in that it
+contained betting odds from various betting sites. However, for the
+purpose of our research, we focused solely on the data from Bet 365
+odds, allowing us to maintain consistency throughout our analysis.
+
+After obtaining the two data sets, we merged them by the home team, away
+team, and the date of each match resulting in a data set with 136
+columns and over 300 observations. Then, we dropped all the columns that
+were unnecessary for our analysis. Also, we cleaned the data by renaming
+column names and by fixing the format of the match date.
+
+After processing the data, we added several additional variables:
+
+\begin{itemize}
+\tightlist
+\item
+  expect\_win: created a new expected win variable based on the betting
+  data
+\item
+  expect\_point\_h: expected home points from the betting odds
+
+  \begin{itemize}
+  \tightlist
+  \item
+    We computed the expected home points based on
+    \url{casino.betmgm.com}. It is important to note that the betting
+    data split the odds into three columns for each game: home team
+    odds, away team odds, and draw odds. So, our first step was to
+    convert the betting odds to fractional odds. To do this, we created
+    a new variable based on the home team winning odds, the away team
+    winning odds, and the draw odds. The variables were computed by
+    1/betting odd. Then, by adding the three variables together, we
+    computed the marginal total probability for each game. Next, to
+    convert this number into a percentage, you divide the fractional odd
+    by the total marginal probability, resulting in a percentage of each
+    game outcome that reflects the betting data. Finally, to achieve the
+    variable expect\_point\_h, you use this equation
+    \(percent_H \cdot 3 + percent_D\).
+  \end{itemize}
+\item
+  Full\_time\_result\_point: taking the actual outcome of the match and
+  converting it into a dummy variable. The home team loses = 0, the home
+  team draws = 1, the home team wins = 3.
+\item
+  expect\_point\_diff\_bet: Difference between the expected for the home
+  team minus the away team based on the betting data.
+\item
+  streak: the winning streak of each team from the last five games,
+  weighted by historical data.
+\end{itemize}
+
+Although the merged datasets already grant us ample information to run
+our models effectively, we have taken innovative steps to enhance our
+prediction further. This entails the incorporation of the variable
+consisting of a team ranking. Here, we took player ranking data from
+FIFA.com for the 2018-19 season, filtered players from the Premier
+League only, and then computed the position ranking within each team.
+The ranking process involved several steps. First, we considered the
+number of minutes played by each player in the season. Players with
+higher minutes played received a higher weight since they are more
+likely to have a larger impact on the team. Secondly, we grouped the
+players into their respective position (forwards, midfielders,
+defenders, and goalkeepers), allowing us to further rank the positions
+on each team. From there, we were then able to compute an overall team
+ranking, which serves as a valuable metric in our analysis.
+
+\hypertarget{methods}{%
+\subsection{Methods}\label{methods}}
+
+Prior to applying all explanatory parameters to our models, we wanted to
+first test-out the predictability of match outcomes through betting-odds
+alone. As the dependent variable (match outcome) is an ordered
+categorical variable, the models we could utilize were inherently
+limited to main three models: Generalized Additive Models (GAMs),
+Multinomial regressions, and Random forest algorithms. After assembling
+the base models, we added more independent parameters to increase the
+accuracy prediction of our models. In total, we used four different
+explanatory variables, namely the streak difference (the last five
+games' results of each team leading up to that specific match), expected
+goals (XGs) for the home team computed by the betting odds, XGs
+difference, and XGs difference based on defense and offense rating of
+home/away teams.
+
+Then models were trained on matches from the start of the season until
+February of the 2018/19 season as it encompasses \(2/3\) of the season
+and allows machine learning to best adapt the available data, which then
+can be used to test out the remaining 2018/19 season matches.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Multinomial regression}: Firstly, we fit multinomial models as
+  the response variable is a categorical data that requires using a
+  linear combination of the observed variables to estimate the
+  probability of each classified value of the dependent parameter. A
+  compact version of the prediction function is:
+\end{itemize}
+
+\(f(k, i) = \beta_k + x_i\) where \(\beta_k\) is the set of regression
+coefficients associated with outcome k, and \(x_i\) (row vector) is the
+set of explanatory variables associated with observation \(i\).
+
+\begin{itemize}
+\item
+  \textbf{Generalized Additive Models (GAMs)}: We fit GAMs with various
+  combinations of explanatory variables since some parameters could
+  result in the model overfitting on the training data. As mentioned
+  previously, the response variable being an ordered, non-binary
+  categorical data meant that we had to use multinomial GAMs with K+1
+  categories for K linear predictors. The likelihood of each response
+  variable can be transcribed in the following way:
+  \[\frac{e^{\eta_y}}{1 + \Sigma_j e^{\eta_i}}\] where \(\eta_y\) is the
+  linear predictor of \(y\) category of the dependent variable.
+\item
+  \textbf{Random forest algorithms}: Lastly, we utilized the Random
+  Forest to generate predictions of different categories of the
+  dependent variable. To quickly implement random forest, we used the
+  ranger package with classification method.
+\end{itemize}
+
+\hypertarget{results}{%
+\subsection{Results}\label{results}}
+
+\hypertarget{conclusion-limitation}{%
+\subsection{Conclusion (limitation)}\label{conclusion-limitation}}
+
+\hypertarget{figures-and-tables}{%
+\subsection{Figures and Tables}\label{figures-and-tables}}
+
+\hypertarget{acknowledgments}{%
+\subsection{Acknowledgments}\label{acknowledgments}}
+
+\hypertarget{reference}{%
+\subsection{Reference}\label{reference}}
+
+\end{document}

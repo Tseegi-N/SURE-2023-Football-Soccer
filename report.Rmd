@@ -1,9 +1,32 @@
 ---
 title: "To Bet or Not to Bet: Analyzing the Credibility of Fixed-odds Betting on Match Outcomes"
 author: "Tseegi Nyamdorj, Fungai Jani, Maria Tsakalakos"
-output: html_document
 date: "2023-07-24"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+    fig_width: 7
+    fig_height: 6
+    fig_caption: yes
+    theme: lumen
+    df_print: paged
 ---
+
+<style type="text/css">
+h1.title {
+  text-align: center;
+}
+h4.author {
+  text-align: center;
+}
+h4.date {
+  text-align: center;
+}
+</style>
+
+
 
 ## Introduction 
 
@@ -38,6 +61,25 @@ library(ggimage)
 library(readr)
 library(patchwork)
 ```
+
+### The Data:
+ 
+For our research, we utilized two publicly available data sets from the Premier League 2018-2019 season. The first data set was obtained from [footstats.org](footstats.org), accessible under the "Football Stats Database to CSV and Excel" section on the website. This CSV file contained game-level data, with each entry representing a specific game from the 2018-2019 season. The data set comprised approximately 72 columns, providing detailed information about various events occurring in each match. These variables covered a wide range of aspects, including the names of the home and away teams, the full-time result of the match, expected goals, shots on target for the home team, as well as additional details like the referee's name, the stadium where the match was played, and the timestamp of the game.
+ 
+The second data set we used was betting data from football-data.co.uk, where we were able to obtain free soccer betting odds & results, match statistics, odds comparison, and more. Similar to the previous data set, we specifically downloaded data pertaining to the Premier League's 2018-2019 season to ensure compatibility with our existing dataset. The football-data.co.uk data set differed from the previous one in that it contained betting odds from various betting sites. However, for the purpose of our research, we focused solely on the data from Bet 365 odds, allowing us to maintain consistency throughout our analysis.
+ 
+After obtaining the two data sets, we merged them by the home team, away team, and the date of each match resulting in a data set with 136 columns and over 300 observations. Then, we dropped all the columns that were unnecessary for our analysis. Also, we cleaned the data by renaming column names and by fixing the format of the match date.
+ 
+After processing the data, we added several additional variables:
+ 
+  - expect_win: created a new expected win variable based on the betting data
+  - expect_point_h: expected home points from the betting odds
+    - We computed the expected home points based on [casino.betmgm.com](casino.betmgm.com).           It is important to note that the betting data split the odds into three columns for             each game: home team odds, away team odds, and draw odds. So, our first step was to             convert the betting odds to fractional odds. To do this, we created a new variable              based on the home team winning odds, the away team winning odds, and the draw odds.             The variables were computed by 1/betting odd. Then, by adding the three variables               together, we computed the marginal total probability for each game. Next, to convert            this number into a percentage, you divide the fractional odd by the total marginal              probability, resulting in a percentage of each game outcome that reflects the betting           data. Finally, to achieve the variable expect_point_h, you use this equation                    $percent_H \cdot 3 + percent_D$.
+  - Full_time_result_point: taking the actual outcome of the match and converting it into a dummy variable. The home team loses = 0, the home team draws = 1, the home team wins = 3.
+  - expect_point_diff_bet: Difference between the expected for the home team minus the away team based on the betting data.
+  - streak: the winning streak of each team from the last five games, weighted by historical data.
+ 
+Although the merged datasets already grant us ample information to run our models effectively, we have taken innovative steps to enhance our prediction further. This entails the incorporation of the variable consisting of a team ranking. Here, we took player ranking data from FIFA.com for the 2018-19 season, filtered players from the Premier League only, and then computed the position ranking within each team. The ranking process involved several steps. First, we considered the number of minutes played by each player in the season. Players with higher minutes played received a higher weight since they are more likely to have a larger impact on the team. Secondly, we grouped the players into their respective position (forwards, midfielders, defenders, and goalkeepers), allowing us to further rank the positions on each team. From there, we were then able to compute an overall team ranking, which serves as a valuable metric in our analysis.
 
 
 ## Methods
