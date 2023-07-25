@@ -62,6 +62,171 @@ library(readr)
 library(patchwork)
 ```
 
+```{r, include=FALSE}
+#data manipulation
+bettingPL2018 <- read.csv("E0 (1).csv")
+basicInfoPL2018 <- read.csv("england-premier-league-matches-2018-to-2019-stats.csv")
+players_data <- read.csv("players.csv")
+Fifa19 <- read_csv("players_19.csv")
+```
+
+```{r, include=FALSE}
+#match team names
+bettingPL2018$HomeTeam <- 
+  stri_replace_all_regex(bettingPL2018$HomeTeam,
+                         pattern = c("Man United", "Bournemouth",
+                                     "Huddersfield", "Newcastle",
+                                     "Wolves", "Cardiff", "Leicester",
+                                     "Tottenham", "West Ham", "Brighton",
+                                     "Man City"),
+                         replacement = c("Manchester United", 
+                                         "AFC Bournemouth", 
+                                         "Huddersfield Town",
+                                         "Newcastle United",
+                                         "Wolverhampton Wanderers",
+                                         "Cardiff City", 
+                                         "Leicester City", 
+                                         "Tottenham Hotspur",
+                                         "West Ham United", 
+                                         "Brighton & Hove Albion",
+                                         "Manchester City"),
+                         vectorize = FALSE)
+
+bettingPL2018$AwayTeam <- 
+  stri_replace_all_regex(bettingPL2018$AwayTeam,
+                         pattern = c("Man United", "Bournemouth",
+                                     "Huddersfield", "Newcastle",
+                                     "Wolves", "Cardiff", "Leicester",
+                                     "Tottenham", "West Ham", "Brighton",
+                                     "Man City"),
+                         replacement = c("Manchester United", 
+                                         "AFC Bournemouth", 
+                                         "Huddersfield Town",
+                                         "Newcastle United",
+                                         "Wolverhampton Wanderers",
+                                         "Cardiff City", 
+                                         "Leicester City", 
+                                         "Tottenham Hotspur",
+                                         "West Ham United", 
+                                         "Brighton & Hove Albion",
+                                         "Manchester City"),
+                         vectorize = FALSE)
+
+#create new variable to match with and merge
+bettingPL2018 <- bettingPL2018 %>% 
+  mutate(Info = paste(HomeTeam, " ", AwayTeam, "-", Date))
+
+basicInfoPL2018 <- basicInfoPL2018 %>% mutate(datetime = as_datetime(timestamp),
+                           date = as_date(datetime),
+                           day = day(date),
+                           month = month(date),
+                           year = year(date),
+                           dmy = str_c(day, month, year, sep = "/"),
+                           date = format(date, "%d/%m/%Y"))
+
+
+basicInfoPL2018 <- basicInfoPL2018 %>%
+  mutate(Date = make_date(date_GMT),
+         Info = paste(home_team_name, " ", away_team_name, "-", date))
+
+bettingBasicPL2018 <- left_join(bettingPL2018, basicInfoPL2018, 
+                                       by = "Info")
+
+#Rename variables
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  rename(Home_goals = FTHG, Away_goals = FTAG, Halftime_home_goals = HTHG, 
+         Halftime_away_goals = HTAG, Home_shots = HS, Away_shots = AS, 
+         Home_shots_on_target = HST, Away_shots_on_target = AST ,Home_fouls = HF, 
+         Home_cards =  HC,Away_cards = AC, Home_yellows = HY, Away_yellows = AY , 
+         Home_reds = HR, Away_reds = AR, Full_time_result = FTR, Half_time_result = HTR)
+
+# create new expected win variable
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(expect_win = ifelse(((odds_ft_home_team_win < odds_ft_draw) & (odds_ft_home_team_win < odds_ft_away_team_win)), "expected home wins", 
+                        ifelse((odds_ft_draw < odds_ft_home_team_win) & (odds_ft_draw < odds_ft_away_team_win), "expected draw", "expected away win")))
+
+#converting betting odds to percentages
+bettingBasicPL2018 <-  bettingBasicPL2018 %>% 
+  mutate(expect_bet_H = 1/B365H,
+         expect_bet_A = 1/B365A,
+         expect_bet_D = 1/B365D,
+         marginal_prob_total = expect_bet_H + expect_bet_D + expect_bet_A,
+         percent_H = expect_bet_H/marginal_prob_total,
+         percent_D = expect_bet_D/marginal_prob_total,
+         percent_A = expect_bet_A/marginal_prob_total,
+         expect_point_H = percent_H * 3 + percent_D,
+         Full_time_result_point =  ifelse((Full_time_result == "H"), 3, 
+                        ifelse((Full_time_result == "D"), 1, 0)),
+         expect_point_A = percent_A * 3 + percent_D,
+         expect_point_diff_bet = expect_point_H - expect_point_A)
+
+#players data set
+players_data$birthday_GMT <- format(as.Date(players_data$birthday_GMT), "%d/%m/%Y")
+Fifa19$dob <-format(as.Date(Fifa19$dob,format="%d/%m/%Y"),"%d/%m/%Y")
+players_data$dob <- players_data$birthday_GMT
+players_data$club_name <- players_data$Current.Club
+Fifa19[Fifa19== "Bournemouth"] <- "AFC Bournemouth"
+test <-merge(players_data,Fifa19,by=c("club_name","dob"))
+
+#function to compute streak
+streak <- function(df, home, away, index){
+  streak_data <- df[1:(index-1),] %>% 
+    filter((HomeTeam %in% c(home, away) | AwayTeam %in% c(home, away)))
+
+  n_rows <- nrow(streak_data)
+  streak_data <- streak_data[max(1,n_rows-9):n_rows,]
+  streak_data <- streak_data %>% 
+ 
+    mutate(
+    opposing_team = ifelse(HomeTeam %in% c(home, away), AwayTeam, HomeTeam),
+    team = ifelse(HomeTeam %in% c(home, away), HomeTeam, AwayTeam),
+    weighted_points = case_when(
+      opposing_team %in% c("Liverpool", "Manchester City", "Manchester United", 
+                           "Tottenham Hotspur", "Liverpool") ~ 1.5,
+      opposing_team %in% c("Arsenal", "Burnley", "Leicester City", "Newcastle United", 
+                           "Everton") ~ 1.25,
+      opposing_team %in% c("Westham United", "Crystal Palace", "Brighton & Hove Albion", 
+                           "AFC Bournemouth", "Watford") ~ 0.75,
+      TRUE ~ 0.5),
+    Home_away = ifelse(HomeTeam %in% c(home, away), "H", "A"),
+    win = case_when(((Home_away == "H" & Full_time_result == "H") | 
+                       (Home_away == "A" & Full_time_result == "A")) ~ 1,
+                    (Full_time_result == "D") ~ 0, TRUE ~ (-1)))
+  
+  home_streak <- streak_data %>% 
+    filter(team == home) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  away_streak <- streak_data %>% 
+    filter(team == away) %>% 
+    mutate(weighted_streak = weighted_points * win) %>% 
+    summarize(streak = sum(weighted_streak))
+ 
+  streak <- paste(c(home_streak, away_streak))
+ 
+  return(streak)
+}
+
+#compute streak
+bettingBasicPL2018 <- bettingBasicPL2018 %>% mutate(streak_h = NA, streak_a = NA)
+for(i in 1:nrow(bettingBasicPL2018)) {
+  streak_score <- streak(bettingBasicPL2018, bettingBasicPL2018$HomeTeam[i],
+                         bettingBasicPL2018$AwayTeam[i], i)
+
+  bettingBasicPL2018$streak_h[i] <- streak_score[1]
+  bettingBasicPL2018$streak_a[i] <- streak_score[2]
+} 
+
+#compute streak diff
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(streak_diff = as.integer(streak_h) - as.integer(streak_a))
+
+#expected goals
+bettingBasicPL2018 <- bettingBasicPL2018 %>%
+  mutate(xg_diff = Home.Team.Pre.Match.xG - Away.Team.Pre.Match.xG)
+```
+
 ### The Data:
  
 For our research, we utilized two publicly available data sets from the Premier League 2018-2019 season. The first data set was obtained from [footstats.org](footstats.org), accessible under the "Football Stats Database to CSV and Excel" section on the website. This CSV file contained game-level data, with each entry representing a specific game from the 2018-2019 season. The data set comprised approximately 72 columns, providing detailed information about various events occurring in each match. These variables covered a wide range of aspects, including the names of the home and away teams, the full-time result of the match, expected goals, shots on target for the home team, as well as additional details like the referee's name, the stadium where the match was played, and the timestamp of the game.
@@ -72,21 +237,53 @@ After obtaining the two data sets, we merged them by the home team, away team, a
  
 After processing the data, we added several additional variables:
  
-  - expect_win: created a new expected win variable based on the betting data
-  - expect_point_h: expected home points from the betting odds
+  - **expect_win**: created a new expected win variable based on the betting data
+  - **expect_point_h**: expected home points from the betting odds
     - We computed the expected home points based on [casino.betmgm.com](casino.betmgm.com).           It is important to note that the betting data split the odds into three columns for             each game: home team odds, away team odds, and draw odds. So, our first step was to             convert the betting odds to fractional odds. To do this, we created a new variable              based on the home team winning odds, the away team winning odds, and the draw odds.             The variables were computed by 1/betting odd. Then, by adding the three variables               together, we computed the marginal total probability for each game. Next, to convert            this number into a percentage, you divide the fractional odd by the total marginal              probability, resulting in a percentage of each game outcome that reflects the betting           data. Finally, to achieve the variable expect_point_h, you use this equation                    $percent_H \cdot 3 + percent_D$.
-  - Full_time_result_point: taking the actual outcome of the match and converting it into a dummy variable. The home team loses = 0, the home team draws = 1, the home team wins = 3.
-  - expect_point_diff_bet: Difference between the expected for the home team minus the away team based on the betting data.
-  - streak: the winning streak of each team from the last five games, weighted by historical data.
+  - **Full_time_result_point**: taking the actual outcome of the match and converting it into a dummy variable. The home team loses = 0, the home team draws = 1, the home team wins = 3.
+  - **expect_point_diff_bet**: Difference between the expected for the home team minus the away team based on the betting data.
+  - **streak**: the winning streak of each team from the last five games, weighted by historical data.
  
 Although the merged datasets already grant us ample information to run our models effectively, we have taken innovative steps to enhance our prediction further. This entails the incorporation of the variable consisting of a team ranking. Here, we took player ranking data from FIFA.com for the 2018-19 season, filtered players from the Premier League only, and then computed the position ranking within each team. The ranking process involved several steps. First, we considered the number of minutes played by each player in the season. Players with higher minutes played received a higher weight since they are more likely to have a larger impact on the team. Secondly, we grouped the players into their respective position (forwards, midfielders, defenders, and goalkeepers), allowing us to further rank the positions on each team. From there, we were then able to compute an overall team ranking, which serves as a valuable metric in our analysis.
 
+### Exploratory Data Analysis (EDA)
+
+Before modeling, the distributions of the expected goal differential within the basic data set and the betting data set were examined to better understand the relationships and the data.
+ 
+```{r, echo=FALSE}
+bettingBasicPL2018 %>% 
+  ggplot() +
+  geom_histogram(aes(x = xg_diff, fill = "XGs Difference"), alpha = 0.4, bins = 18) +
+  geom_histogram(aes(x = expect_point_diff_bet, fill = "XGs Difference Betting"), alpha = 0.4, bins = 18) +
+  facet_wrap(~Full_time_result, labeller = labeller(Full_time_result = c(
+    "A" = "Away",
+    "D" = "Draw",
+    "H" = "Home"
+  ))) +
+  labs(x = "Expected Goals Differential", fill = "Data", 
+       title = "Comparing Expected Goals Differential Between Basic and Betting Data") +
+  scale_fill_manual(values = c("XGs Difference" = "darkred", "XGs Difference Betting" = "blue")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+As we can see from the distributions, the betting dataset does a better job of displaying the expected goal differential than the basic dataset. This is because curves from the basic data set are normal distributions, whereas the curves from the betting data are either skewed left or right, depending on if the home or away team wins. In the betting data, bookmakers adjust the odds based on the betting patterns to ensure a profit margin, which can lead to skewed distributions in the betting dataset. On the contrary, the basic data set has a more idealized view, ultimately leading to a normal distribution. Thus, by incorporating betting data in our models to predict outcomes of Premier League matches, we can achieve more precise predictions because of the skewness within the betting data.
 
 ## Methods
 
-Prior to applying all explanatory parameters to our models, we wanted to first test-out the predictability of match outcomes through betting-odds alone. As the dependent variable (match outcome) is an ordered categorical variable, the models we could utilize were inherently limited to main three models: Generalized Additive Models (GAMs), Multinomial regressions, and Random forest algorithms. After assembling the base models, we added more independent parameters to increase the accuracy prediction of our models. In total, we used four different explanatory variables, namely the streak difference (the last five games’ results of each team leading up to that specific match), expected goals (XGs) for the home team computed by the betting odds, XGs difference, and XGs difference based on defense and offense rating of home/away teams. 
+Prior to applying all explanatory parameters to our models, we wanted to first test-out the predictability of match outcomes through betting-odds alone. As the dependent variable (match outcome) is an ordered categorical variable, the models we could utilize were inherently limited to main three models: Generalized Additive Models (GAMs), Multinomial regressions, and Random forest algorithms. After assembling the base models, we added more independent parameters to increase the accuracy prediction of our models. In total, we used four different explanatory variables, namely the **streak_diff** or the streak difference (the last five games’ results of each team leading up to that specific match), expected goals (XGs) for the home team computed by the betting odds (**expect_point_H**), XGs difference (**xg_diff**) from the basic dataframe, and XGs difference based on defense and offense rating of home/away teams (**pos_rating_regression**). 
 
-Then models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt the available data, which then can be used to test out the remaining 2018/19 season matches.       
+One of the main objectives of our project is to incorporate player evaluation metrics to team ratings to better the accuracy of match predictions. In accordance to our advisor Dr. Konstantinos Pelechrinis, we have decided to use a multiplicative regression of offense, defense ratings, and XGs. 
+\[min\Sigma_i^n[(y_{hi}-y_{ai}) - (g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a)]\] The variables in the function are as follows: 
+  - $y_{hi}$ means actual number of goals scored in game $i$ while $y_{ai}$ represents actual number of goals scored from away team in game $i$. 
+  - $g_{h_i}$ is expected goals in match $i$ for the home team and $g_{a_i}$ is expected goals in match $i$ for the away team.
+  - $o_h$ is the offense rating for home team and $o_a$ is the offense rating for the away team.
+  - $d$ serves as the defense rating for home and away team. 
+As the multiplicative regression function is minimizing the the subtraction of actual number of goals and expected number of goals, we can convert the function into an equation. 
+\[y_{hi}-y_{ai} = g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a\] 
+
+Please keep in mind that offense and defense ratings were computed by taking the average weighted rating of individual defensive and offensive players on the team. After setting up the variables, models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt the available data, which then can be used to test out the remaining 2018/19 season matches.       
 
 - **Multinomial regression**: Firstly, we fit multinomial models as the response variable is a categorical data that requires using a linear combination of the observed variables to estimate the probability of each classified value of the dependent parameter. A compact version of the prediction function is:
 
@@ -98,14 +295,13 @@ where $\beta_k$ is the set of regression coefficients associated with outcome k,
 
 - **Random forest algorithms**: Lastly, we utilized the Random Forest to generate predictions of different categories of the dependent variable. To quickly implement random forest, we used the ranger package with classification method. 
 
-
 ## Results
 
 ## Conclusion (limitation)
 
-## Figures and Tables
-
 ## Acknowledgments
+
+For their direction, inspiration and constant support, we are grateful to Dr. Konstantinos Pelechrinis, Dr. Ronald Yurko and Meg Ellingwood. Their assistance throughout this project has been immensely appreciated. We also extend our thanks to the entire Carnegie Mellon Sports Analytics Camp of 2023, the guest speakers and the Teaching Assistants. Finally, we are thankful to Carnegie Mellon University for funding this research camp and project.
 
 ## Reference
 
