@@ -231,7 +231,7 @@ bettingBasicPL2018 <- bettingBasicPL2018 %>%
  
 For our research, we utilized two publicly available data sets from the Premier League 2018-2019 season. The first data set was obtained from [footstats.org](footstats.org), accessible under the "Football Stats Database to CSV and Excel" section on the website. This CSV file contained game-level data, with each entry representing a specific game from the 2018-2019 season. The data set comprised approximately 72 columns, providing detailed information about various events occurring in each match. These variables covered a wide range of aspects, including the names of the home and away teams, the full-time result of the match, expected goals, shots on target for the home team, as well as additional details like the referee's name, the stadium where the match was played, and the timestamp of the game.
  
-The second data set we used was betting data from football-data.co.uk, where we were able to obtain free soccer betting odds & results, match statistics, odds comparison, and more. Similar to the previous data set, we specifically downloaded data pertaining to the Premier League's 2018-2019 season to ensure compatibility with our existing dataset. The football-data.co.uk data set differed from the previous one in that it contained betting odds from various betting sites. However, for the purpose of our research, we focused solely on the data from Bet 365 odds, allowing us to maintain consistency throughout our analysis.
+The second data set we used was betting data from [football-data.co.uk](football-data.co.uk), where we were able to obtain free soccer betting odds & results, match statistics, odds comparison, and more. Similar to the previous data set, we specifically downloaded data pertaining to the Premier League's 2018-2019 season to ensure compatibility with our existing dataset. The football-data.co.uk data set differed from the previous one in that it contained betting odds from various betting sites. However, for the purpose of our research, we focused solely on the data from Bet 365 odds, allowing us to maintain consistency throughout our analysis.
  
 After obtaining the two data sets, we merged them by the home team, away team, and the date of each match resulting in a data set with 136 columns and over 300 observations. Then, we dropped all the columns that were unnecessary for our analysis. Also, we cleaned the data by renaming column names and by fixing the format of the match date.
  
@@ -276,14 +276,18 @@ Prior to applying all explanatory parameters to our models, we wanted to first t
 
 One of the main objectives of our project is to incorporate team rating based on player evaluation metrics to better the accuracy of match predictions. In accordance with our advisor Dr. Konstantinos Pelechrinis, we have decided to use a multiplicative regression of offense, defense ratings, and XGs. 
 \[min\Sigma_i^n[(y_{hi}-y_{ai}) - (g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a)]\] The variables in the function are as follows: 
-  - $y_{hi}$ means actual number of goals scored in game $i$ while $y_{ai}$ represents actual number of goals scored from away team in game $i$. 
-  - $g_{h_i}$ is expected goals in match $i$ for the home team and $g_{a_i}$ is expected goals in match $i$ for the away team.
-  - $o_h$ is the offense rating for home team and $o_a$ is the offense rating for the away team.
-  - $d$ serves as the defense rating for home and away team. 
-As the multiplicative regression function is minimizing the subtraction of actual number of goals and expected number of goals, we can convert the function into an equation. 
-\[y_{hi}-y_{ai} = g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a\] 
 
-Please keep in mind that offense and defense ratings were computed by taking the average weighted rating of individual defensive and offensive players on the team. After setting up the variables, models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt the available data, which then can be used to test out the remaining 2018/19 season matches.       
+    - $y_{hi}$ means actual number of goals scored in game $i$ while $y_{ai}$ represents actual number of goals scored from away team in game $i$. 
+    - $g_{h_i}$ is expected goals in match $i$ for the home team and $g_{a_i}$ is expected goals in match $i$ for the away team.
+    - $o_h$ is the offense rating for home team and $o_a$ is the offense rating for the away team.
+    - $d$ serves as the defense rating for home and away team. 
+
+
+As the multiplicative regression function is minimizing the subtraction of actual number of goals and expected number of goals, we can convert the function into an equation. 
+\[0 \approx (y_{hi}-y_{ai}) - (g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a)\] 
+\[y_{hi}-y_{ai} \approx g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a\] 
+
+Please keep in mind that offense and defense ratings were computed by taking the average weighted rating of individual defensive and offensive players on the team. After setting up the variables, models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt to the available data, which then can be used to test out the remaining 2018/19 season matches.       
 
 - **Multinomial regression**: Firstly, we fit multinomial models as the response variable is a categorical data that requires using a linear combination of the observed variables to estimate the probability of each classified value of the dependent parameter. A compact version of the prediction function is:
 
@@ -570,7 +574,7 @@ brier_table <- brier_table %>%
 
 In order to best test out the accuracy of model predictions, we computed each models’ brier score, an equivalence of the mean squared error as applied to predicted probabilities. The brier score takes on mutually exclusive discrete outcomes, and measures the mean squared difference between the predicted probabilities and actual outcomes, which means lower the brier score, the better the predictions are calibrated. 
 
-As shown below, the best model (lowest brier score) is the GAMs with XGs based on defense and offense ratings and XGs from betting data as independent variables. Although most models’ brier scores range between 0.25 and 0.27, models of random forest type have exceptionally higher brier scores averaging around 0.46. Thus, we can infer that multinomial is the best applicable method, followed closely by GAMs. The result can be explained due to GAMs’ nature of smoothing function on independent variables through the training data, which increases predictability. 
+As shown below, the best model (lowest brier score) is the GAMs with XGs based on defense and offense ratings and XGs from betting data as independent variables. Although most models’ brier scores range between 0.25 and 0.27, models of random forest type have exceptionally high brier scores, averaging around 0.46. Thus, we can infer that the GAMs is the best applicable method, followed closely by the multinomial models. The result can be explained due to the smoothing function of GAMs on independent variables of the training data, which increases predictability.
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -691,11 +695,10 @@ print(plot_combined_rf)
 
 ## Conclusion
 
-In this project we had the goal of enhancing match outcome predictions in the 2018-2019 English Premier League season by using a variety of predictive models and including more variables. We aimed to outperform the standard betting probabilities and used this as our baseline model. Our results showed that adding player and team evaluation, team streak data and expected goals to the baseline model, considerably increased the accuracy of match outcome forecasts. Through the utilization of generalized additive models, random forest and multinomial models, we gained valuable insights into the strength and weaknesses of each approach.
-The integration of player-specific information, such as their ratings and minutes played, allowed us to discern the impact of individual athletes on a team performance. The integration of team streak data and expected goals contributed to capturing momentum and offensive prowess, which proved to be critical factors in predicting match outcomes more effectively.
+In this project we had the goal of enhancing match outcome predictions in the 2018-2019 English Premier League season by using a variety of predictive models and including more variables. We aimed to outperform the standard betting probabilities and used this as our baseline model. Our results showed that adding player and team evaluation to the baseline model, considerably increased the accuracy of match outcome forecasts. Through the utilization of generalized additive models, random forest and multinomial models, we gained valuable insights into the strength and weaknesses of each approach.
+The integration of player-specific information, such as their ratings and minutes played, allowed us to discern the impact of individual athletes on a team performance. However, the integration of team streak data and expected goals has negative impact on the accuracy of the prediction, due to variables over-predicting on the training data and duplicability between other variables. 
 
-
-Despite the promising results and contributions, there are limitations to this project, namely: the spontaneity of sports events, particularly soccer matches. While we incorporated recent form and player evaluations, unpredictable factors such as injuries, weather and unexpected tactical adjustments during the game. These dynamic elements may limit the accuracy of our predictions. Furthermore, the data is specific to one English Premier League season, future seasons may show different trends and dynamics.
+Despite the promising results and contributions, there are limitations to this project, namely: the spontaneity of sports events, particularly soccer matches. While we incorporated recent form, player evaluations, and other factors , unpredictable factors such as injuries, weather and unexpected tactical adjustments during the game. These dynamic elements may limit the accuracy of our predictions. Furthermore, the data is specific to one English Premier League season, future seasons may show different trends and dynamics.
 
 
 Future development for this project could be in the form of adding new variables such as real-time data to account for the unpredictable factors such as injuries. Using these predictions to simulate league results and which teams are at more risk of relegation and which teams are more likely to make the Champions League. Betting odds are subject to bookmakers' interests and market fluctuations so collecting data from more than one betting company and averaging would lead to more reliable results.
