@@ -274,13 +274,13 @@ As we can see from the distributions, the betting dataset does a better job of d
 
 Prior to applying all explanatory parameters to our models, we wanted to first test-out the predictability of match outcomes through betting-odds alone. As the dependent variable (match outcome) is an ordered categorical variable, the models we could utilize were inherently limited to main three models: Generalized Additive Models (GAMs), Multinomial regressions, and Random forest algorithms. After assembling the base models, we added more independent parameters to increase the accuracy prediction of our models. In total, we used four different explanatory variables, namely the **streak_diff** or the streak difference (the last five games’ results of each team leading up to that specific match), expected goals (XGs) for the home team computed by the betting odds (**expect_point_H**), XGs difference (**xg_diff**) from the basic dataframe, and XGs difference based on defense and offense rating of home/away teams (**pos_rating_regression**). 
 
-One of the main objectives of our project is to incorporate player evaluation metrics to team ratings to better the accuracy of match predictions. In accordance to our advisor Dr. Konstantinos Pelechrinis, we have decided to use a multiplicative regression of offense, defense ratings, and XGs. 
+One of the main objectives of our project is to incorporate team rating based on player evaluation metrics to better the accuracy of match predictions. In accordance with our advisor Dr. Konstantinos Pelechrinis, we have decided to use a multiplicative regression of offense, defense ratings, and XGs. 
 \[min\Sigma_i^n[(y_{hi}-y_{ai}) - (g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a)]\] The variables in the function are as follows: 
   - $y_{hi}$ means actual number of goals scored in game $i$ while $y_{ai}$ represents actual number of goals scored from away team in game $i$. 
   - $g_{h_i}$ is expected goals in match $i$ for the home team and $g_{a_i}$ is expected goals in match $i$ for the away team.
   - $o_h$ is the offense rating for home team and $o_a$ is the offense rating for the away team.
   - $d$ serves as the defense rating for home and away team. 
-As the multiplicative regression function is minimizing the the subtraction of actual number of goals and expected number of goals, we can convert the function into an equation. 
+As the multiplicative regression function is minimizing the subtraction of actual number of goals and expected number of goals, we can convert the function into an equation. 
 \[y_{hi}-y_{ai} = g_{h_i} \cdot o_h \cdot d_h - g_{a_i} \cdot o_a \cdot d_a\] 
 
 Please keep in mind that offense and defense ratings were computed by taking the average weighted rating of individual defensive and offensive players on the team. After setting up the variables, models were trained on matches from the start of the season until February of the 2018/19 season as it encompasses $2/3$ of the season and allows machine learning to best adapt the available data, which then can be used to test out the remaining 2018/19 season matches.       
@@ -477,7 +477,7 @@ brier_score['multinomial pos'] = data.frame(
 #Predicting the grier score
 actual_outcomes_gams <- test_data_PL$Full_time_result_point 
 predicted_probs_gams_pos <- predict(init_logit_gam_pos, newdata = test_data_PL, type = "response")  
-gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams_pos)
 
 brier_score['Pos GAMs'] =  gams_dataframe_predict %>% 
   mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
@@ -486,6 +486,8 @@ brier_score['Pos GAMs'] =  gams_dataframe_predict %>%
 
 actual_outcomes <- test_data_PL$Full_time_result_point 
 predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_PL, type = "probs"))
+predictions_best <- predict(multinom_betting_pos, newdata = test_data_PL,type="probs")
+predictions
 
 #Brier Score
 brier_score['multinomial betting pos'] = data.frame(
@@ -566,48 +568,30 @@ brier_table <- brier_table %>%
 
 ## Results
 
+In order to best test out the accuracy of model predictions, we computed each models’ brier score, an equivalence of the mean squared error as applied to predicted probabilities. The brier score takes on mutually exclusive discrete outcomes, and measures the mean squared difference between the predicted probabilities and actual outcomes, which means lower the brier score, the better the predictions are calibrated. 
+
+As shown below, the best model (lowest brier score) is the GAMs with XGs based on defense and offense ratings and XGs from betting data as independent variables. Although most models’ brier scores range between 0.25 and 0.27, models of random forest type have exceptionally higher brier scores averaging around 0.46. Thus, we can infer that multinomial is the best applicable method, followed closely by GAMs. The result can be explained due to GAMs’ nature of smoothing function on independent variables through the training data, which increases predictability. 
+
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 brier_table %>% 
   select(brier.score, type) %>% 
   rename(Brier_Score = brier.score, Type_of_Model = type) %>% 
-  arrange(Brier_Score)
+  arrange(Brier_Score) %>% 
+  head(13)
 ```
 
 
+## Calibration Plots {.tabset .tabset-pills}
+
+Moreover, in order to best represent the model accuracy, we decided to use calibration plots, a visualization of disparity between the probability predicted by the model and the actual class probabilities in the data. The best model (init_logit_gam_pos) has its class lines predominantly closer to the 45 degree dashed line of perfect calibration. As for multinomial base models, it over-predicts match outcomes causing type II errors. Lastly, the base random forest has both type I and type II errors, which means the model is unfavorable for predicting match outcomes.
+
+### Multinomial Base
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Calibration Plots
-calib_data0 <- data.frame(x = predictions_cal[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
-plot0 <- ggplot(calib_data0, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Loses") +
-              ylim(0,1)
-
-calib_data1 <- data.frame(x = predictions_cal[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
-plot1 <- ggplot(calib_data1, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Draws") +
-              ylim(0,1)
-
-calib_data3 <- data.frame(x = predictions_cal[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
-plot3 <- ggplot(calib_data3, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Wins") +
-              ylim(0,1)
 # Set a common y-axis limit for all plots
 y_axis_lim <- c(0, 1)
-
-# Combine the plots into a a single grid (still three plots)
-combined_plot <- plot0 + plot1 + plot3 + plot_layout(ncol = 3) + 
-                 ylim(y = y_axis_lim)
 
 # Calibration Plots into one plot
 calib_data <- data.frame(
@@ -615,58 +599,33 @@ calib_data <- data.frame(
   y = c(ifelse(test_data_PL$Full_time_result_point == 0, 1, 0),
         ifelse(test_data_PL$Full_time_result_point == 1, 1, 0),
         ifelse(test_data_PL$Full_time_result_point == 3, 1, 0)),
-  group = factor(rep(c("Loses", "Draws", "Wins"), each = nrow(predictions_cal)))
+  group = factor(rep(c("Losses", "Draws", "Wins"), each = nrow(predictions_cal)))
 )
 
 plot_combined <- ggplot(calib_data, aes(x = x, y = y, color = group)) +
   geom_point(alpha = 0.4) +
   geom_smooth(se = FALSE) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  labs(x = "Predicted Probability", y = "Observed fraction",
-       title = "Calibration Curves for Different Outcomes") +
+  labs(x = "Predicted Probability", y = "Observed Fraction",
+       title = "Calibration Curves of Multinomial Base \nModel for Different Outcomes") +
   ylim(0, 1) +
+  xlim(0, 1) +
+  coord_fixed(ratio = 1) +
   scale_color_manual(values = c("red", "blue", "green")) +
-  guides(color = guide_legend(title = "Expected Outcome"))
+  guides(color = guide_legend(title = "Expected Outcome")) +
+  theme_bw() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
 
 
 print(plot_combined)
 ```
 
 
+
+### GAMs (best)
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #Calibration of Position GAMs
-# Calibration Plots
-calib_data0_gams <- data.frame(x = predicted_probs_gams_pos[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
-plot0_gams <- ggplot(calib_data0_gams, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Loses") +
-              ylim(0,1)
-
-calib_data1_gams <- data.frame(x = predicted_probs_gams_pos[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
-plot1_gams <- ggplot(calib_data1_gams, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Draws") +
-              ylim(0,1)
-
-calib_data3_gams <- data.frame(x = predicted_probs_gams_pos[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
-plot3_gams <- ggplot(calib_data3_gams, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Wins") +
-              ylim(0,1)
-
-# Combine the plots into a a single grid (still three plots)
-combined_plot_gams <- plot0_gams + plot1_gams + plot3_gams + plot_layout(ncol = 3) + 
-                 ylim(y = y_axis_lim)
-
 # Calibration Plots into one plot
 calib_data_gams <- data.frame(
   x = c(predicted_probs_gams_pos[, 1], predicted_probs_gams_pos[, 2], predicted_probs_gams_pos[, 3]),
@@ -680,51 +639,29 @@ plot_combined_gams <- ggplot(calib_data_gams, aes(x = x, y = y, color = group)) 
   geom_point(alpha = 0.4) +
   geom_smooth(se = FALSE) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  labs(x = "Predicted Probability", y = "Observed fraction",
-       title = "Calibration Curves for Different Outcomes") +
+  labs(x = "Predicted Probability", y = "Observed Fraction",
+       title = "Calibration Curves of GAMs Model with XGs from \nOffense/Defense Rating for Different Outcomes") +
   ylim(0, 1) +
+  xlim(0, 1) +
+  coord_fixed(ratio = 1) +
   scale_color_manual(values = c("red", "blue", "green")) +
-  guides(color = guide_legend(title = "Expected Outcome"))
+  guides(color = guide_legend(title = "Expected Outcome")) +
+  theme_bw() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
 
 # Display the combined plot
 print(plot_combined_gams)
 ```
 
+
+
+
+
+
+### Base Random Forest
+
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #Calibration of random forest base
-# Calibration Plots
-rand_forest_predictions <- data.frame(rf_probs_base)
-calib_data0_rf <- data.frame(x = rand_forest_predictions_base[,1], y = ifelse(test_data_PL$Full_time_result_point == 0, 1, 0))
-plot0_rf <- ggplot(calib_data0_rf, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Loses") +
-              ylim(0,1)
-
-calib_data1_rf <- data.frame(x = rand_forest_predictions_base[,2], y = ifelse(test_data_PL$Full_time_result_point == 1, 1, 0))
-plot1_rf <- ggplot(calib_data1_rf, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Draws") +
-              ylim(0,1)
-
-calib_data3_rf <- data.frame(x = rand_forest_predictions_base[,3], y = ifelse(test_data_PL$Full_time_result_point == 3, 1, 0))
-plot3_rf <- ggplot(calib_data3_rf, aes(x=x, y=y)) + 
-              geom_point() +
-              geom_smooth(se = FALSE) +
-              geom_abline(slope = 1, intercept=0, linetype="dashed") +
-              labs(x="Predicted Probability", y = "Observed fraction",
-                   title = "Probability Home \nTeam Wins") +
-              ylim(0,1)
-
-# Combine the plots into a a single grid (still three plots)
-combined_plot_rf <- plot0_rf + plot1_rf + plot3_rf + plot_layout(ncol = 3) + 
-                 ylim(y = y_axis_lim)
-
 # Calibration Plots into one plot
 calib_data_rf <- data.frame(
   x = c(rand_forest_predictions_base[, 1], rand_forest_predictions_base[, 2], rand_forest_predictions_base[, 3]),
@@ -738,21 +675,42 @@ plot_combined_rf <- ggplot(calib_data_rf, aes(x = x, y = y, color = group)) +
   geom_point(alpha = 0.4) +
   geom_smooth(method = 'loess', formula = 'y ~ x', se = FALSE) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  labs(x = "Predicted Probability", y = "Observed fraction",
-       title = "Calibration Curves for Different Outcomes") +
+  labs(x = "Predicted Probability", y = "Observed Fraction",
+       title = "Calibration Curves of Base Random Forest \nModel for Different Outcomes") +
   ylim(0, 1) +
+  xlim(0, 1) +
+  coord_fixed(ratio = 1) +
   scale_color_manual(values = c("red", "blue", "green")) +
-  guides(color = guide_legend(title = "Expected Outcome"))
+  guides(color = guide_legend(title = "Expected Outcome")) +
+  theme_bw() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
 
 # Display the combined plot
 print(plot_combined_rf)
 ```
 
-## Conclusion (limitation)
+## Conclusion
+
+In this project we had the goal of enhancing match outcome predictions in the 2018-2019 English Premier League season by using a variety of predictive models and including more variables. We aimed to outperform the standard betting probabilities and used this as our baseline model. Our results showed that adding player and team evaluation, team streak data and expected goals to the baseline model, considerably increased the accuracy of match outcome forecasts. Through the utilization of generalized additive models, random forest and multinomial models, we gained valuable insights into the strength and weaknesses of each approach.
+The integration of player-specific information, such as their ratings and minutes played, allowed us to discern the impact of individual athletes on a team performance. The integration of team streak data and expected goals contributed to capturing momentum and offensive prowess, which proved to be critical factors in predicting match outcomes more effectively.
+
+
+Despite the promising results and contributions, there are limitations to this project, namely: the spontaneity of sports events, particularly soccer matches. While we incorporated recent form and player evaluations, unpredictable factors such as injuries, weather and unexpected tactical adjustments during the game. These dynamic elements may limit the accuracy of our predictions. Furthermore, the data is specific to one English Premier League season, future seasons may show different trends and dynamics.
+
+
+Future development for this project could be in the form of adding new variables such as real-time data to account for the unpredictable factors such as injuries. Using these predictions to simulate league results and which teams are at more risk of relegation and which teams are more likely to make the Champions League. Betting odds are subject to bookmakers' interests and market fluctuations so collecting data from more than one betting company and averaging would lead to more reliable results.
+
 
 ## Acknowledgments
 
 For their direction, inspiration and constant support, we are grateful to Dr. Konstantinos Pelechrinis, Dr. Ronald Yurko and Meg Ellingwood. Their assistance throughout this project has been immensely appreciated. We also extend our thanks to the entire Carnegie Mellon Sports Analytics Camp of 2023, the guest speakers and the Teaching Assistants. Finally, we are thankful to Carnegie Mellon University for funding this research camp and project.
 
 ## Reference
+
+Ulmer, Ben, Matthew Fernandez, and Michael Peterson. "Predicting soccer match results in the english premier league." Doctoral dissertation, Doctoral dissertation, Ph. D. dissertation, Stanford (2013).
+	
+Razali, Nazim, et al. "Predicting football matches results using Bayesian networks for English Premier League (EPL)." Iop conference series: Materials science and engineering. Vol. 226. No. 1. IOP Publishing, 2017.
+
+Benjamin Holmes, Ian G. McHale, Forecasting football match results using a player rating based model,
+International Journal of Forecasting, 2023.
 
