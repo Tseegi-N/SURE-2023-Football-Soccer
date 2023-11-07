@@ -524,8 +524,6 @@ test$weightedminutes <- test$min_per_match / 90
 
 test$weighted_overall_rating <- test$weightedminutes * test$over
 
-print(test$weighted_overall_rating)
-
 #change winning number for model
 bettingBasicPL2018 <- bettingBasicPL2018 %>% 
   mutate(Full_time_result_num = case_when(Full_time_result_point == 3 ~ 2, .default = Full_time_result_point))
@@ -578,6 +576,7 @@ init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(exp
                            family = multinom(K = 2), 
                            data = train_data_PL)
 ```
+
  
 ```{r}
 #check for summary
@@ -1322,4 +1321,483 @@ bettingBasicPL2018 %>%
   theme(legend.position = "bottom")
 ```
 
+```{r}
+date_diff = difftime(bettingBasicPL2018$dmy[380], bettingBasicPL2018$dmy[1])/7
+
+bettingBasicPL2018 <- bettingBasicPL2018 %>% 
+  mutate(month_num = case_when(((month > 5) & (month < 13)) ~ (month - 7),
+                               TRUE ~ (month + 5))) 
+
+#set-up training data (first 2 months as training and October as testing)
+train_data_PL <- bettingBasicPL2018 %>% 
+  filter(month_num < 2)
+
+test_data_PL <- bettingBasicPL2018 %>% 
+  filter(month_num == 3)
+
+init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
+                           ~s(expect_point_H) + s(pos_rating_regression)),
+                      data = filter(train_data_PL),
+                      family = multinom(K = 2))
+
+#Predicting the grier score
+actual_outcomes_gams <- test_data_PL$Full_time_result_point 
+predicted_probs_gams_pos <- predict(init_logit_gam_pos, newdata = test_data_PL, type = "response")  
+gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams_pos)
+
+brier_score['Pos GAMs October'] =  gams_dataframe_predict %>% 
+  mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+  brier_class(actual_outcomes_gams, X1:X3) %>% 
+  select(.estimate)
+
+multinom_betting_pos <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H, data = train_data_PL)
+
+actual_outcomes <- test_data_PL$Full_time_result_point 
+predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_PL, type = "probs"))
+predictions_best <- predict(multinom_betting_pos, newdata = test_data_PL,type="probs")
+predictions
+
+#Brier Score
+brier_score['multinomial betting pos October'] = data.frame(
+  actual_outcomes,
+  predicted_probs
+) %>% 
+  mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+  brier_class(actual_outcomes, X0:X3) %>% 
+  select(.estimate)
+```
+
+```{r}
+j <- 2
+brier_table_month <- data.frame(type = c("multinomial base", "base GAMs", "streak GAMs", "streak xg GAMs", "rand forest streak Xg", "multinomial pos", "Pos GAMs", "multinomial betting pos", "multinomial betting pos streak", "multinomial ful", "rand forest pos", "Full GAMs", "rand forest base"))
+
+#New set-up training data
+for(i in 11:12){
+  train_data_month <- bettingBasicPL2018 %>% 
+    filter(month %in% 8:(i-1))
+  
+  test_data_month <- bettingBasicPL2018 %>% 
+    filter(month %in% i)
+  
+  #set-up models
+  init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
+                           ~s(expect_point_H) + s(streak_diff)),
+                      data = filter(train_data_month),
+                      family = multinom(K = 2))
+  init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
+                           family = multinom(K = 2), 
+                           data = train_data_month)
+  init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff)),
+                      data = train_data_month,
+                      family = multinom(K = 2))
+  expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_month)
+  random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_month, probability = TRUE)
+  multinom_pos_reg <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression, data = train_data_month)
+  init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
+                           ~s(expect_point_H) + s(pos_rating_regression)),
+                      data = filter(train_data_month),
+                      family = multinom(K = 2))
+  multinom_betting_pos <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H, data = train_data_month)
+  multinom_betting_pos_streak <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff, data = train_data_month)
+  multinom_full <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff + xg_diff, data = train_data_month)
+  random_forest_pos <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff + pos_rating_regression, data = train_data_month, probability = TRUE)
+  init_logit_gam_full <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression), 
+                            ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression)),
+                      data = train_data_month,
+                      family = multinom(K = 2))
+  random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train_data_month, probability = TRUE)
+  
+  #brier score dataframe 
+  brier_score_month <- data.frame(matrix(nrow = 1))
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_month, type = "probs"))
+  predictions_cal <- predict(expect_model, newdata = test_data_month,type="probs")
+predictions
+
+  brier_score_month['multinomial base'] = data.frame(
+    actual_outcomes,
+    predicted_probs) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+  
+  brier_score_month <-brier_score_month[-c(1)] 
+  row.names(brier_score_month)[1] <- "brier score"
+  
+  predictions <- predict(init_logit_base_gam, newdata = test_data_month)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_month, type = "response")  
+
+  brier_score_month['base GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+  
+  predictions <- predict(init_logit_gam, newdata = test_data_month)
+  
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_month, type = "response")  
+
+  brier_score_month['streak GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams
+  ) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  predictions <- predict(init_logit_gam_xg, newdata = test_data_month)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_month, type = "response")  
+
+  brier_score_month['streak xg GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams
+  ) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  rf_predictions <- predict(random_forest, data = test_data_month)
+
+  #Predicting the grier score
+  rf_outcomes <- test_data_month$Full_time_result_point 
+  rf_probs <- predict(random_forest, data = test_data_month, type = "response")  
+
+  brier_score_month['rand forest streak Xg'] = data.frame(
+    rf_outcomes,
+    rf_probs
+  ) %>% 
+    mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+    brier_class(rf_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  #Predicting the grier score
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_pos_reg, newdata = test_data_month, type = "probs"))
+  base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+  #Brier Score
+  brier_score_month['multinomial pos'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams_pos <- predict(init_logit_gam_pos, newdata = test_data_month, type = "response")  
+  gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams_pos)
+
+  brier_score_month['Pos GAMs'] =  gams_dataframe_predict %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_month, type = "probs"))
+  predictions_best <- predict(multinom_betting_pos, newdata = test_data_month,type="probs")
+predictions
+
+  #Brier Score
+  brier_score_month['multinomial betting pos'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_betting_pos_streak, newdata = test_data_month, type = "probs"))
+
+  brier_score_month['multinomial betting pos streak'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_full, newdata = test_data_month, type = "probs"))
+
+  brier_score_month['multinomial full'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  rfp_predictions <- predict(random_forest_pos, data = test_data_month)
+
+  #Predicting the grier score
+  rfp_outcomes <- test_data_month$Full_time_result_point 
+  rfp_probs <- predict(random_forest_pos, data = test_data_month, type = "response")  
+
+  brier_score_month['rand forest pos'] = data.frame(
+    rfp_outcomes,
+    rfp_probs
+  ) %>% 
+    mutate(rfp_outcomes = factor(rfp_outcomes)) %>% 
+    brier_class(rfp_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam_full, newdata = test_data_month, type = "response")  
+  gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+  brier_score_month['Full GAMs'] =  gams_dataframe_predict %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  rf_outcomes <- test_data_month$Full_time_result_point 
+  rf_probs_base <- predict(random_forest_base, data = test_data_month, type = "response")  
+  rand_forest_predictions_base <- data.frame(rf_probs_base)
+
+  brier_score_month['rand forest base'] = data.frame(
+    rf_outcomes,
+    rf_probs_base
+  ) %>% 
+    mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+    brier_class(rf_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  brier_score_month <- data.frame(t(brier_score_month)) 
+  
+  brier_month_vec <- as.vector(brier_score_month['brier.score'])
+  brier_table_month <- cbind(brier_table_month, brier_month_vec)
+  names(brier_table_month)[j] = paste(c(i, "month"), collapse = " ")
+  j <- j+1
+}
+
+for(i in 1:5){
+  train_data_month <- bettingBasicPL2018 %>% 
+    filter(!month %in% i:5)
+  
+  test_data_month <- bettingBasicPL2018 %>% 
+    filter(month %in% i)
+  
+  #set-up models
+  init_logit_gam <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff), 
+                           ~s(expect_point_H) + s(streak_diff)),
+                      data = filter(train_data_month),
+                      family = multinom(K = 2))
+  init_logit_base_gam <- gam(list(Full_time_result_num ~ s(expect_point_H), ~s(expect_point_H)),
+                           family = multinom(K = 2), 
+                           data = train_data_month)
+  init_logit_gam_xg <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff), ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff)),
+                      data = train_data_month,
+                      family = multinom(K = 2))
+  expect_model <- nnet::multinom(as.factor(Full_time_result_point) ~ expect_point_H, data = train_data_month)
+  random_forest <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff, data = train_data_month, probability = TRUE)
+  multinom_pos_reg <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression, data = train_data_month)
+  init_logit_gam_pos <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(pos_rating_regression), 
+                           ~s(expect_point_H) + s(pos_rating_regression)),
+                      data = filter(train_data_month),
+                      family = multinom(K = 2))
+  multinom_betting_pos <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H, data = train_data_month)
+  multinom_betting_pos_streak <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff, data = train_data_month)
+  multinom_full <- nnet::multinom(as.factor(Full_time_result_point) ~ pos_rating_regression + expect_point_H + streak_diff + xg_diff, data = train_data_month)
+  random_forest_pos <- ranger(Full_time_result_num ~ expect_point_H + streak_diff + xg_diff + pos_rating_regression, data = train_data_month, probability = TRUE)
+  init_logit_gam_full <- gam(list(Full_time_result_num ~ s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression), 
+                            ~s(expect_point_H) + s(streak_diff) 
+                              + s(xg_diff) + s(pos_rating_regression)),
+                      data = train_data_month,
+                      family = multinom(K = 2))
+  random_forest_base <- ranger(Full_time_result_num ~ expect_point_H, data = train_data_month, probability = TRUE)
+  
+  #brier score dataframe 
+  brier_score_month <- data.frame(matrix(nrow = 1))
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(expect_model, newdata = test_data_month, type = "probs"))
+  predictions_cal <- predict(expect_model, newdata = test_data_month,type="probs")
+predictions
+
+  brier_score_month['multinomial base'] = data.frame(
+    actual_outcomes,
+    predicted_probs) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+  
+  brier_score_month <-brier_score_month[-c(1)] 
+  row.names(brier_score_month)[1] <- "brier score"
+  
+  predictions <- predict(init_logit_base_gam, newdata = test_data_month)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_base_gam, newdata = test_data_month, type = "response")  
+
+  brier_score_month['base GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+  
+  predictions <- predict(init_logit_gam, newdata = test_data_month)
+  
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam, newdata = test_data_month, type = "response")  
+
+  brier_score_month['streak GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams
+  ) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  predictions <- predict(init_logit_gam_xg, newdata = test_data_month)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam_xg, newdata = test_data_month, type = "response")  
+
+  brier_score_month['streak xg GAMs'] = data.frame(
+    actual_outcomes_gams,
+    predicted_probs_gams
+  ) %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  rf_predictions <- predict(random_forest, data = test_data_month)
+
+  #Predicting the grier score
+  rf_outcomes <- test_data_month$Full_time_result_point 
+  rf_probs <- predict(random_forest, data = test_data_month, type = "response")  
+
+  brier_score_month['rand forest streak Xg'] = data.frame(
+    rf_outcomes,
+    rf_probs
+  ) %>% 
+    mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+    brier_class(rf_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  #Predicting the grier score
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_pos_reg, newdata = test_data_month, type = "probs"))
+  base_data_frame <- cbind(actual_outcomes, predicted_probs)
+
+  #Brier Score
+  brier_score_month['multinomial pos'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  #Predicting the grier score
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams_pos <- predict(init_logit_gam_pos, newdata = test_data_month, type = "response")  
+  gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams_pos)
+
+  brier_score_month['Pos GAMs'] =  gams_dataframe_predict %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_betting_pos, newdata = test_data_month, type = "probs"))
+  predictions_best <- predict(multinom_betting_pos, newdata = test_data_month,type="probs")
+predictions
+
+  #Brier Score
+  brier_score_month['multinomial betting pos'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_betting_pos_streak, newdata = test_data_month, type = "probs"))
+
+  brier_score_month['multinomial betting pos streak'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes <- test_data_month$Full_time_result_point 
+  predicted_probs <- as.data.frame(predict(multinom_full, newdata = test_data_month, type = "probs"))
+
+  brier_score_month['multinomial full'] = data.frame(
+    actual_outcomes,
+    predicted_probs
+  ) %>% 
+    mutate(actual_outcomes = factor(actual_outcomes)) %>% 
+    brier_class(actual_outcomes, X0:X3) %>% 
+    select(.estimate)
+
+  rfp_predictions <- predict(random_forest_pos, data = test_data_month)
+
+  #Predicting the grier score
+  rfp_outcomes <- test_data_month$Full_time_result_point 
+  rfp_probs <- predict(random_forest_pos, data = test_data_month, type = "response")  
+
+  brier_score_month['rand forest pos'] = data.frame(
+    rfp_outcomes,
+    rfp_probs
+  ) %>% 
+    mutate(rfp_outcomes = factor(rfp_outcomes)) %>% 
+    brier_class(rfp_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  actual_outcomes_gams <- test_data_month$Full_time_result_point 
+  predicted_probs_gams <- predict(init_logit_gam_full, newdata = test_data_month, type = "response")  
+  gams_dataframe_predict <- data.frame(actual_outcomes_gams, predicted_probs_gams)
+
+  brier_score_month['Full GAMs'] =  gams_dataframe_predict %>% 
+    mutate(actual_outcomes_gams = factor(actual_outcomes_gams)) %>% 
+    brier_class(actual_outcomes_gams, X1:X3) %>% 
+    select(.estimate)
+
+  rf_outcomes <- test_data_month$Full_time_result_point 
+  rf_probs_base <- predict(random_forest_base, data = test_data_month, type = "response")  
+  rand_forest_predictions_base <- data.frame(rf_probs_base)
+
+  brier_score_month['rand forest base'] = data.frame(
+    rf_outcomes,
+    rf_probs_base
+  ) %>% 
+    mutate(rf_outcomes = factor(rf_outcomes)) %>% 
+    brier_class(rf_outcomes, X1:X3) %>% 
+    select(.estimate)
+
+  brier_score_month <- data.frame(t(brier_score_month)) 
+  
+  brier_month_vec <- as.vector(brier_score_month['brier.score'])
+  brier_table_month <- cbind(brier_table_month, brier_month_vec)
+  names(brier_table_month)[j] = paste(c(i, "month"), collapse = " ")
+  j <- j+1
+}
+```
 
